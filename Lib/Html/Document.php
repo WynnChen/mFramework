@@ -113,22 +113,11 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 			->appendTo($this->head);
 	}
 	
-	// protected function initHtml5($lang)
-	// {
-	// $this->loadXML('<!DOCTYPE html><html lang="'.$lang.'"></html>');
-	// $this->documentElement->appendChild($this->head = Html::head(
-	// Html::meta()
-	// ->set('http-equiv', 'Content-Type')
-	// ->set('content', 'text/html; charset=utf-8'),
-	// Html::meta()
-	// ->set('charset', 'utf-8'),
-	// $this->title = Html::title('mFramework By Wynn Chen')
-	// ));
-	// }
 	protected function setTitle($title)
 	{
-		$title = $this->createElement('title', $title);
+		$title = $this->createElement('title');
 		$title->replace($this->title);
+		$title->appendChild($this->createTextNode($title)); //某些特殊字符可能会引发问题，需要用textnode包一下。
 		$this->title = $title;
 		return $this;
 	}
