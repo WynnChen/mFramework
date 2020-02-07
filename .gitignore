@@ -1,0 +1,7 @@
+.*
+!.gitignore
+*.bak
+*.map
+TestReport/
+
+Thumbs.db

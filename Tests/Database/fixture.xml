@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<mysqldump xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<database name="test">
+		<table_data name="blog">
+			<row>
+				<field name="id">1</field>
+				<field name="heading">good</field>
+				<field name="abstract">abs</field>
+				<field name="body">something</field>
+			</row>
+			<row>
+				<field name="id">2</field>
+				<field name="heading">bed</field>
+				<field name="abstract">lala</field>
+				<field name="body">good body imfomatondfe</field>
+			</row>
+		</table_data>
+	</database>
+</mysqldump>
