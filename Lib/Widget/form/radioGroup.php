@@ -2,10 +2,15 @@
 namespace mFramework\Widget\Form;
 
 use mFramework\Html;
+use mFramework\Html\Element;
 
-class RadioGroup
+class RadioGroup extends Element
 {
-
+	public function __construct()
+	{
+		parent::__construct('span');
+	}
+	
 	/**
 	 *
 	 * @param string $name
@@ -18,9 +23,10 @@ class RadioGroup
 	 */
 	public static function create($name, $info, $required = false, $value = null)
 	{
-		$box = Html::span()->set('class', 'radio_group');
+		$box = new self();
+		$box->set('class', 'radio_group');
 		foreach ($info as $key => $display) {
-			$radio = Html::radio($name, $key, $display, (($value !== null) and ((string)$key == (string)$value)));
+			$radio = InputSpan::create('radio', $name, $key, $display)->checked((($value !== null) and ((string)$key == (string)$value)));
 			if ($required) {
 				$radio->input->required('raquired');
 			}

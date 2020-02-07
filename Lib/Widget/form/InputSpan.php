@@ -9,24 +9,38 @@
  * @copyright 2009 - 2016 Wynn Chen
  * @author    Wynn Chen <wynn.chen@outlook.com>
  */
-namespace mFramework\Html\Element;
+namespace mFramework\Widget\Form;
 
 use \mFramework\Html;
+use mFramework\Html\Element;
 
 /**
  *
- * Html input element
+ * Html input span
  *
  * @package mFramework
  * @author Wynn Chen
  */
-class Input extends \mFramework\Html\Element
+class InputSpan extends Element
 {
-	public function __construct($name, $type = null)
+	public $input;
+	public $label;
+	
+	public function __construct()
 	{
-		parent::__construct('input');
-		$this->setAttribute('name', $name);
-		$type and $this->setAttribute('type', $type);
+		parent::__construct('span');
+	}
+	
+	public static function create($type, $name, $value, $label, $id = null)
+	{
+		$span = new self();
+		if (!$id) {
+			$id = $name . '_' . mt_rand(0, 99) . uniqid();
+		}
+		$span->addClass($type);
+		$span->input = Html::input($name, $type)->id($id)->value($value)->appendTo($span);
+		$span->label = Html::label($label)->for($id)->addClass('follow')->appendTo($span);
+		return $span;
 	}
 	
 	/**
@@ -38,10 +52,10 @@ class Input extends \mFramework\Html\Element
 	public function required($required = true)
 	{
 		if($required){
-			$this->setAttribute('required', 'required');
+			$this->input->setAttribute('required', 'required');
 		}
 		else{
-			$this->removeAttribute('required');
+			$this->input->removeAttribute('required');
 		}
 		return $this;
 	}
@@ -55,10 +69,10 @@ class Input extends \mFramework\Html\Element
 	public function checked($checked = true)
 	{
 		if($checked){
-			$this->setAttribute('checked', 'checked');
+			$this->input->setAttribute('checked', 'checked');
 		}
 		else{
-			$this->removeAttribute('checked');
+			$this->input->removeAttribute('checked');
 		}
 		return $this;
 	}

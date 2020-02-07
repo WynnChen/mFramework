@@ -125,11 +125,10 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 	// $this->title = Html::title('mFramework By Wynn Chen')
 	// ));
 	// }
-	protected function setTitle($text)
+	protected function setTitle($title)
 	{
-		$title = $this->createElement('title');
+		$title = $this->createElement('title', $title);
 		$title->replace($this->title);
-		$title->appendChild($this->createTextNode($text));
 		$this->title = $title;
 		return $this;
 	}

@@ -1,4 +1,4 @@
-# mFramework v4.1
+# mFramework
 
 微型PHP开发框架，致力于用简单明了的方式提供框架支持。
 

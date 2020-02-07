@@ -12,6 +12,7 @@ namespace mFramework;
 use mFramework\Html\Document;
 use mFramework\Html\Element\Input;
 use mFramework\Html\Element\Select;
+use mFramework\Html\Element\InputSpan;
 
 /**
  *
@@ -97,43 +98,6 @@ class Html
 	public static function input($name, $type = 'text')
 	{
 		return new Input($name, $type);
-	}
-
-	public static function checkbox($name, $value, $label, $checked = false, $id = null)
-	{
-		if (!$id) {
-			$id = $name . '_' . mt_rand(0, 99) . uniqid();
-		}
-		$span = self::span()->addClass('checkbox');
-		$span->input = self::input($name, 'checkbox')->id($id)
-			->value($value)
-			->appendTo($span);
-		$span->label = self::label($label)->for($id)
-			->addClass('follow')
-			->appendTo($span);
-		if ($checked) {
-			$span->input->checked('checked');
-		}
-		return $span;
-	}
-
-	public static function radio($name, $value, $label, $checked = false, $required = false)
-	{
-		$id = $name . '_' . mt_rand(0, 99) . uniqid();
-		$span = self::span()->addClass('radio');
-		$span->input = self::input($name, 'radio')->id($id)
-			->value($value)
-			->appendTo($span);
-		$span->label = self::label($label)->for($id)
-			->addClass('follow')
-			->appendTo($span);
-		if ($checked) {
-			$span->input->checked('checked');
-		}
-		if ($required) {
-			$span->input->required('required');
-		}
-		return $span;
 	}
 
 	public static function select($name, ...$content)

@@ -442,6 +442,31 @@ abstract class Record extends \mFramework\Map
 		$sql = 'SELECT * FROM ' . static::table() . ' WHERE ' . implode(' AND ', $where);
 		return static::select($sql, $params)->firstRow();
 	}
+	
+	static public function deleteByPk($value)
+	{
+		$pk = static::$pk;
+		if (!$pk) {
+			throw new QueryException('No PK info. ' . get_called_class());
+		}
+		if (count($pk) == 1) {
+			reset($pk);
+			$value = [current($pk) => $value];
+		}
+		$where = array();
+		$params = array();
+		foreach ($pk as $field) {
+			if($value[$field] === null){
+				$where[] = static::enclose($field) . ' IS NULL';
+			}else{
+				$where[] = static::enclose($field) . ' = ?';
+				$params[] = $value[$field];
+			}
+		}
+		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . implode(' AND ', $where);
+		return static::execute($sql, $params);
+		
+	}
 
 	/**
 	 * 更新本记录内容。 以PK作为where的根据。
