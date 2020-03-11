@@ -113,11 +113,11 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 			->appendTo($this->head);
 	}
 	
-	protected function setTitle($title)
+	protected function setTitle($text)
 	{
 		$title = $this->createElement('title');
 		$title->replace($this->title);
-		$title->appendChild($this->createTextNode($title)); //某些特殊字符可能会引发问题，需要用textnode包一下。
+		$title->appendChild($this->createTextNode($text)); //某些特殊字符可能会引发问题，需要用textnode包一下。
 		$this->title = $title;
 		return $this;
 	}
