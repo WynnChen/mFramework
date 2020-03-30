@@ -56,6 +56,16 @@ trait NodeTrait
 		}
 		return $parent;
 	}
+	
+	/**
+	 * 可以用 ::create() 代替 new
+	 * @param unknown ...$args
+	 * @return unknown
+	 */
+	public static function create(...$args)
+	{
+		return new static(...$args);
+	}
 
 	/**
 	 * 往本节点下附加子节点，数量不限。

@@ -89,6 +89,7 @@ abstract class Action
 
 	/**
 	 * View的名称。应当是一个View实例类的名字，或View实例。
+	 * 
 	 * 注意这里不能直接初始化，因为不肯定这个类一定存在。
 	 * 逻辑上允许先设置一个事实上不存在的view，在随后的逻辑里再覆盖掉。
 	 * setView()会自动打开 auto_render。
