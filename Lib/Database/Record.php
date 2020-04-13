@@ -467,6 +467,31 @@ abstract class Record extends \mFramework\Map
 		return static::execute($sql, $params);
 		
 	}
+	
+	/**
+	 * 简单封装事务处理，从而无需手写try/catch和beginTransaction/commit/rollback等。
+	 * 有如下默认约定：
+	 * 1. con使用w模式。
+	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
+	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
+	 * 
+	 * @param unknown $fn
+	 * @param unknown ...$args
+	 * @throws TransactionException
+	 */
+	static public function doTransaction($fn, ...$args)
+	{
+		try{
+			$con = static::con('w'); //事务通常有write需求，默认用w模式。
+			$con->beginTransaction();
+			$result = $fn(...$args);
+			$con->commit();
+			return $result;
+		}catch(\PDOException $e){
+			$con->rollBack();
+			return false;
+		}
+	}
 
 	/**
 	 * 更新本记录内容。 以PK作为where的根据。
