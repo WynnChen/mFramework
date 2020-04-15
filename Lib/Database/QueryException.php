@@ -15,5 +15,5 @@ namespace mFramework\Database;
  * @package mFramework
  * @author Wynn Chen
  */
-class QueryException extends Exception
+class QueryException extends \PDOException
 {}

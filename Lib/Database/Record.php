@@ -282,8 +282,10 @@ abstract class Record extends \mFramework\Map
 
 	/**
 	 * 模板方法，从数据库读取后被调用。
+	 * 实际调用时机是通过select来创建本对象时实例的 __construct() 内。
+	 * 手工new的时候不会触发。
 	 *
-	 * 可以在这里进行一些清理工作。
+	 * 可以在这里进行一些清理和格式化工作。
 	 */
 	protected function afterRead()
 	{
@@ -296,7 +298,7 @@ abstract class Record extends \mFramework\Map
 	}
 
 	/**
-	 * 模板方法，在写数据库之前被调用。
+	 * 模板方法，在insert()与update()中写数据库之前被调用。
 	 *
 	 * 可以在这里进行一些清理工作。
 	 */
