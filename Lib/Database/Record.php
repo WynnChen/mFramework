@@ -36,7 +36,15 @@ abstract class Record extends \mFramework\Map
 	const DATATYPE_INT = 3;
 
 	const DATATYPE_FLOAT = 4;
-
+	
+	const PARAM_BOOL = \PDO::PARAM_BOOL;
+	CONST PARAM_INT = \PDO::PARAM_INT;
+	CONST PARAM_FLOAT = \PDO::PARAM_STR;
+	CONST PARAM_NULL = \PDO::PARAM_NULL;
+	CONST PARAM_STR = \PDO::PARAM_STR;
+	CONST PARAM_STRING = \PDO::PARAM_STR;
+	CONST PARAM_LOB = \PDO::PARAM_LOB;
+	
 	/**
 	 * #@-
 	 */
@@ -371,29 +379,15 @@ abstract class Record extends \mFramework\Map
 	 *			排序信息数组。
 	 * @return ResultSet
 	 */
-	static public function selectAll(Paginator $paginator = null, array $order_info = null): ResultSet
+	static public function selectAll(Paginator $paginator = null, array $order_info = null, $sql = null): ResultSet
 	{
 		$paginator && $paginator->setTotalItems(static::countAll());
 		
-		$sql = 'SELECT * FROM ' . static::table();
+		$sql = $sql ?: 'SELECT * FROM ' . static::table();
 		$order_info = $order_info ?: static::$default_order_info ?: null;
 		$order_info and $sql .= static::orderByStr($order_info);
 		
 		return static::select($sql, null, $paginator);
-	}
-
-	/**
-	 * 随机选择若干条结果。
-	 * 注意这个方法的速度取决于表内总的条目数量，条目数量大的时候性能极差。
-	 *
-	 * @param int $limit
-	 *			要几个？
-	 * @return ResultSet|Array 注意数量可能比要求的少
-	 */
-	static public function selectRandom($limit)
-	{
-		$sql = 'SELECT * FROM ' . static::table() . ' ORDER BY rand() LIMIT ' . (int)$limit;
-		return static::select($sql);
 	}
 
 	/**
@@ -483,16 +477,8 @@ abstract class Record extends \mFramework\Map
 	 */
 	static public function doTransaction($fn, ...$args)
 	{
-		try{
-			$con = static::con('w'); //事务通常有write需求，默认用w模式。
-			$con->beginTransaction();
-			$result = $fn(...$args);
-			$con->commit();
-			return $result;
-		}catch(\PDOException $e){
-			$con->rollBack();
-			return false;
-		}
+		$con = static::con('w'); //事务通常有write需求，默认用w模式。
+		return $con->doTransaction($fn, ...$args);
 	}
 
 	/**

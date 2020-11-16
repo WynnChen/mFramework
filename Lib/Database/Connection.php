@@ -161,11 +161,44 @@ abstract class Connection extends \PDO
 	public function selectObjects($className, $sql, array $params = null, Paginator $paginator = null, array $ctorargs = null, $fetch_props_late = false)
 	{
 		try {
-			if ($paginator) {
-				$sql .= $this->paginatorToLimitStr($paginator);
+			
+			if(!$params or is_int(array_key_first($params))){
+				// ? 格式
+				if ($paginator) {
+					$sql .= ' LIMIT ?, ?';
+					$params[] = [($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage(), self::PARAM_INT];
+					$params[] = [$paginator->getItemsPerPage(), self::PARAM_INT];
+				}
+				$stmt = $this->prepare($sql);
+				$i = 1;
+				foreach($params as $param){
+					if(is_iterable($param)){
+						$stmt->bindValue($i, ...$param);
+					}
+					else{
+						$stmt->bindValue($i, $param);
+					}
+					$i++;
+				}
 			}
-			$stmt = $this->prepare($sql);
-			$stmt->execute($params);
+			else{
+				// :xx 格式
+				if ($paginator) {
+					$sql .= ' LIMIT :mfLimitStart, :mfLimitCount';
+					$params[':mfLimitStart'] = [($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage(), self::PARAM_INT];
+					$params[':mfLimitCount'] = [$paginator->getItemsPerPage(), self::PARAM_INT];
+				}
+				$stmt = $this->prepare($sql);
+				foreach($params as $key=>$param){
+					if(is_iterable($param)){
+						$stmt->bindValue($key, ...$param);
+					}
+					else{
+						$stmt->bindValue($key, $param);
+					}
+				}
+			}
+			$stmt->execute();
 			$mode = self::FETCH_CLASS;
 			$fetch_props_late and $mode |= self::FETCH_PROPS_LATE;
 			$stmt->setFetchMode($mode, $className, $ctorargs);
@@ -234,17 +267,29 @@ abstract class Connection extends \PDO
 	}
 
 	/**
-	 * 将分页器的信息转换成对应的 limit 子句(取当前页的内容)
+	 * 简单封装事务处理，从而无需手写try/catch和beginTransaction/commit/rollback等。
+	 * 有如下默认约定：
+	 * 1. con使用w模式。
+	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
+	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
 	 *
-	 * @param Paginator $paginator			
-	 * @return string
+	 * @param unknown $fn
+	 * @param unknown ...$args
+	 * @throws TransactionException
 	 */
-	protected function paginatorToLimitStr(Paginator $paginator)
+	public function doTransaction($fn, ...$args)
 	{
-		$start = (int)($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage();
-		$count = (int)$paginator->getItemsPerPage();
-		return " LIMIT " . $start . ', ' . $count;
+		try{
+			$this->beginTransaction();
+			$result = $fn(...$args);
+			$this->commit();
+			return $result;
+		}catch(\PDOException $e){
+			$this->rollBack();
+			return false;
+		}
 	}
+	
 }
 namespace mFramework\Database\Connection;
 

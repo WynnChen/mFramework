@@ -111,7 +111,8 @@ class ResultSet extends \IteratorIterator
 			if ($key_callback === null) {
 				$key = null;
 			} elseif (is_callable($key_callback)) {
-				$key = call_user_func($key_callback, $row, $offset);
+				//不要 $key_callback($row, $offser)，call_user_func接受的格式更多。
+				$key = call_user_func($key_callback, $row, $offset); 
 			} else {
 				$key = $row->$key_callback;
 			}
@@ -133,4 +134,6 @@ class ResultSet extends \IteratorIterator
 		
 		return $array;
 	}
+	
+
 }	
