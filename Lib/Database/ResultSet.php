@@ -49,7 +49,7 @@ class ResultSet extends \IteratorIterator
 	/**
 	 * 建立数据结果集迭代器
 	 *
-	 * @param PDOStatement $stmt			
+	 * @param PDOStatement $stmt
 	 */
 	public function __construct(\PDOStatement $stmt)
 	{

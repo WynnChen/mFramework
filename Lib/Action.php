@@ -137,15 +137,23 @@ abstract class Action
 		return $this->enable_view;
 	}
 
-	/**
-	 * 将数据关联给view
-	 *
-	 * @param string $name			
-	 * @param mixed $value			
-	 */
-	public function assign($name, $value)
+    /**
+     * 将数据关联给view
+     * @param iterable|string $name
+     * @param null $value
+     * @return Action
+     */
+	public function assign($name, $value = null) : self
 	{
-		$this->data->offsetSet($name, $value);
+		if(is_iterable($name)){
+			foreach($name as $k=>$v){
+				$this->data->offsetSet($k, $v);
+			}
+		}
+		else{
+			$this->data->offsetSet($name, $value);
+		}
+		return $this;
 	}
 
 	/**

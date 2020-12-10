@@ -31,10 +31,10 @@ class Session
 	private function __clone()
 	{}
 
-	private function __sleep()
+	public function __sleep()
 	{}
 
-	private function __wakeup()
+	public function __wakeup()
 	{}
 
 	static private function requireStarted()

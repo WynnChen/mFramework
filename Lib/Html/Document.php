@@ -141,9 +141,9 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		return $this->container->prepend(...$children);
 	}
 
-	public function append(...$children)
+	public function append(...$children):void
 	{
-		return $this->container->append(...$children);
+		$this->container->append(...$children);
 	}
 
 	protected function getHeader()
