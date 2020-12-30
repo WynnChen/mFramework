@@ -6,4 +6,4 @@ echo =======   %DATE% %TIME%   =======
 echo =======                                 =======
 echo ===============================================
 echo ===============================================
-phpunit --coverage-html .\TestReport -c .\Tests\phpunit.xml
+php ./Tests/phpunit-9.5.0.phar --coverage-html ./TestReport -c ./Tests/phpunit.xml
