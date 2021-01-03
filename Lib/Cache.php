@@ -1,10 +1,9 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework;
@@ -31,23 +30,22 @@ interface Cache
 {
 
 	/**
-	 * 返回$key相对应的值。如果相应条目不存在返回null。
+	 * 返回$key相对应的值。如果相应条目不存在返回null 。
 	 *
-	 * @param mixed $key			
+	 * @param mixed $key
 	 * @return mixed|null 相应的值，不存在条目直接返回null
 	 */
-	public function get($key);
+	public function get(mixed $key):mixed;
 
 	/**
-	 * 向$key写入值$value。
+	 * 向$key写入值 $value 。
 	 *
 	 * @param mixed $key			
 	 * @param mixed $value			
-	 * @param int $ttl
-	 *			存活时间，0为无限期。
+	 * @param int $ttl 存活时间，0为无限期。
 	 * @return bool 是否操作成功了
 	 */
-	public function set($key, $value, $ttl = 0);
+	public function set(mixed $key, mixed $value, int $ttl = 0):bool;
 
 	/**
 	 * 指定条目在cache中是否存在
@@ -55,20 +53,24 @@ interface Cache
 	 * @param mixed $key			
 	 * @return bool 条目是否存在
 	 */
-	public function has($key);
+	public function has(mixed $key):bool;
 
 	/**
 	 * 从cache中删除指定条目
 	 *
+	 * 注意返回结果表示的是“操作是否成功”，而非“是否实际发生了删除动作”，
+	 * 即，若返回true，表示此后cache已经没有指定条目，而若返回false，则表示指定条目可能还存在于cache中。
+	 * 试图指定cache中不存在的key进行删除应当返回true。
+	 *
 	 * @param mixed $key			
-	 * @return bool 是否成功删除
+	 * @return bool 操作是否成功删除
 	 */
-	public function del($key);
+	public function del(mixed $key):bool;
 
 	/**
 	 * 清空cache，删掉其中所有内容
 	 *
 	 * @return bool 是否成功操作
 	 */
-	public function clear();
+	public function clear():bool;
 }

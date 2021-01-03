@@ -2,11 +2,9 @@
 /**
  * mFramework - a mini PHP framework
  * 
- * Require PHP 7 since v4.0
- *
  * @package   mFramework
- * @version   4.0
- * @copyright 2009 Wynn Chen
+ * @version   5.0
+ * @copyright 2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework\Html;
@@ -136,9 +134,9 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		return $this->container;
 	}
 
-	public function prepend(...$children)
+	public function prepend(...$children):void
 	{
-		return $this->container->prepend(...$children);
+		$this->container->prepend(...$children);
 	}
 
 	public function append(...$children):void

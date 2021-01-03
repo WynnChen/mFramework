@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<phpunit bootstrap="bootstrap.php" strict="false" verbose="true"
+<phpunit bootstrap="bootstrap.php" verbose="true"
 	stopOnError="true" stopOnFailure="true" backupGlobals="true">
 
 	<php>
@@ -19,14 +19,14 @@
 		</testsuite>
 	</testsuites>
 
-	<filter>
-		<whitelist processUncoveredFilesFromWhitelist="true">
+	<coverage processUncoveredFiles ="true">
+		<include>
 			<directory suffix=".php">../Lib</directory>
-			<exclude>
-				<file>../Lib/mFramework.php</file>
-			</exclude>
-		</whitelist>
+		</include>
+		<exclude>
+			<file>../Lib/mFramework.php</file>
+		</exclude>
+	</coverage>
 
-	</filter>
 
 </phpunit>

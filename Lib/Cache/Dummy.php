@@ -1,10 +1,9 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework\Cache;
@@ -26,7 +25,7 @@ class Dummy implements \mFramework\Cache
 	 * @param mixed $key			
 	 * @return mixed|null 相应的值，不存在条目直接返回null
 	 */
-	public function get($key)
+	public function get(mixed $key):mixed
 	{
 		return null;
 	}
@@ -40,7 +39,7 @@ class Dummy implements \mFramework\Cache
 	 *			存活时间，0为无限期。
 	 * @return bool 是否操作成功了
 	 */
-	public function set($key, $value, $ttl = 0)
+	public function set(mixed $key, mixed $value, int $ttl = 0):bool
 	{
 		return true;
 	}
@@ -51,7 +50,7 @@ class Dummy implements \mFramework\Cache
 	 * @param mixed $key			
 	 * @return bool 条目是否存在
 	 */
-	public function has($key)
+	public function has(mixed $key):bool
 	{
 		return false;
 	}
@@ -62,9 +61,9 @@ class Dummy implements \mFramework\Cache
 	 * @param mixed $key			
 	 * @return bool 是否成功删除
 	 */
-	public function del($key)
+	public function del(mixed $key):bool
 	{
-		return false;
+		return true;
 	}
 
 	/**
@@ -72,7 +71,7 @@ class Dummy implements \mFramework\Cache
 	 *
 	 * @return bool 是否成功操作
 	 */
-	public function clear()
+	public function clear():bool
 	{
 		return true;
 	}

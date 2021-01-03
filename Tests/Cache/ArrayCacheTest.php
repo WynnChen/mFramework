@@ -3,17 +3,13 @@ use mFramework\Cache\ArrayCache;
 
 class ArrayCacheTest extends PHPUnit\Framework\TestCase
 {
-	/**
-	 *
-	 * @var ArrayCache
-	 */
-	protected $backend;
+	protected ArrayCache $backend;
 	
-	protected function setUp()
+	protected function setUp():void
 	{
 		$this->backend = new ArrayCache();
 	}
-	protected function tearDown()
+	protected function tearDown():void
 	{
 		$this->backend->clear();
 	}
@@ -55,10 +51,9 @@ class ArrayCacheTest extends PHPUnit\Framework\TestCase
 		$this->assertTrue($backend->has('key'));
 		$this->assertTrue($backend->del('key'));
 		$this->assertFalse($backend->has('key'));
-		$this->assertFalse($backend->del('key'));
+		$this->assertTrue($backend->del('key'));
 		$this->assertNull($backend->get('key'));
-		
-		$this->assertFalse($backend->del('foo'));
+		$this->assertTrue($backend->del('foo'));
 	}
 	
 	public function testClear()

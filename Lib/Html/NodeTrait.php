@@ -211,7 +211,7 @@ trait NodeTrait
 	 *
 	 * @return self $this
 	 */
-	public function remove()
+	public function remove():void
 	{
 		try {
 			$parent = $this->requireParent();
@@ -219,7 +219,6 @@ trait NodeTrait
 		} catch (NeedParentException $e) {
 			// 没有父节点不用处理。
 		}
-		return $this;
 	}
 
 	/**

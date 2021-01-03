@@ -3,17 +3,13 @@ use mFramework\Cache\Dummy;
 
 class DummyTest extends PHPUnit\Framework\TestCase
 {
-	/**
-	 *
-	 * @var DummyCache
-	 */
 	protected $backend;
 	
-	protected function setUp()
+	protected function setUp():void
 	{
 		$this->backend = new Dummy();
 	}
-	protected function tearDown()
+	protected function tearDown():void
 	{
 		$this->backend->clear();
 	}
@@ -49,11 +45,11 @@ class DummyTest extends PHPUnit\Framework\TestCase
 	{
 		$backend = $this->backend;
 		$backend->set('key', 'value');
-		$this->assertFalse($backend->del('key'));
+		$this->assertTrue($backend->del('key'));
 		$this->assertFalse($backend->has('key'));
 		$this->assertNull($backend->get('key'));
 		
-		$this->assertFalse($backend->del('foo'));
+		$this->assertTrue($backend->del('foo'));
 	}
 	
 	public function testClear()

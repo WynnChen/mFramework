@@ -3,8 +3,7 @@
  * mFramework - a mini PHP framework
  * 
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework;
@@ -22,46 +21,32 @@ namespace mFramework;
  * ClassLoader::getInstance()->addPrefixHandles();
  *
  * ClassLoader不负责处理格式验证等问题，调用方自行保证
- *
- * @package mFramework
- * @author Wynn Chen
  */
 class ClassLoader
 {
-
 	/**
 	 * singleton instance
-	 *
-	 * @var static
 	 */
-	private static $instance = null;
+	private static ?ClassLoader $instance = null;
+
 
 	/**
 	 * 获取单件实例。
-	 *
-	 * @return static
 	 */
-	static public function getInstance(): self
+	static public function getInstance(): static
 	{
-		if (!self::$instance) {
-			self::$instance = new static();
-		}
-		return self::$instance;
+		return self::$instance ?? self::$instance = new static();
 	}
 
 	/**
 	 * 显式指定的 类名 => 文件 映射数组
-	 *
-	 * @var array
 	 */
-	protected $class_files = [];
+	protected array $map = [];
 
 	/**
 	 * namespace前缀 => 对应处理函数
-	 *
-	 * @var array
 	 */
-	protected $prefixes = [];
+	protected array $prefixes = [];
 
 	/**
 	 * @codeCoverageIgnore
@@ -69,13 +54,12 @@ class ClassLoader
 	 * 注册到 SPL autoloader 序列中。
 	 * SPL autoloader 的注册过程会自行处理重复注册问题，无需额外操作。
 	 *
-	 * @param bool $prepend
-	 *			等同于spl_autoload_register()的$prepend参数。
+	 * @param bool $prepend 等同于spl_autoload_register()的$prepend参数。
 	 * @return bool 注册结果
 	 */
 	public function register(bool $prepend = true): bool
 	{
-		return spl_autoload_register([$this,'loadClass'], true, (bool)$prepend);
+		return spl_autoload_register([$this,'loadClass'], true, $prepend);
 	}
 
 	/**
@@ -89,18 +73,6 @@ class ClassLoader
 	}
 
 	/**
-	 * 检测本 loader 是否已经注册。
-	 *
-	 * 注意本方法需要遍历所有已注册loader，复杂度为O(n)。
-	 *
-	 * @return bool
-	 */
-	public function isRegistered(): bool
-	{
-		return in_array([$this,'loadClass'], (array)spl_autoload_functions());
-	}
-
-	/**
 	 * 一次性指定多个 类 => 文件的映射。
 	 *
 	 * 不检查指定文件名是否有效。
@@ -110,25 +82,23 @@ class ClassLoader
 	 *
 	 * 直接指定的优先级高于namespace前缀
 	 *
-	 * @param array $class
-	 *			类名=>文件 的数组
-	 * @return self $this
+	 * @param array $map $classname => $filename
+	 * @return ClassLoader
 	 */
-	public function addClassFiles(array $map): self
+	public function addClassMap(array $map): self
 	{
-		$this->class_files += $map;
+		$this->map += $map;
 		return $this;
 	}
-	
+
 	/**
-	 * 获取所有已设置的类名映射
-	 * 
 	 * @return array
 	 */
-	public function getClassFiles():array
+	public function getClassMap(): array
 	{
-		return $this->class_files;
+		return $this->map;
 	}
+
 
 	/**
 	 * 同时为多个 namespace 前缀指定处理方式。
@@ -136,13 +106,11 @@ class ClassLoader
 	 * 重复指定同一个前缀会被忽略。
 	 * 前缀识别区分大小写。
 	 *
-	 *
 	 * 处理函数handle的格式：
 	 * function(string $relative_class, string $prefix):string
-	 * 返回值为对应需要加载的文件名，或null。
+	 * 返回值为对应需要加载的文件名，或 null 。
 	 *
-	 * @param array $info
-	 *			前缀信息，格式为$prefix=>$handle
+	 * @param array $info 前缀信息，格式为 $prefix=>$handle
 	 * @return self $this
 	 */
 	public function addPrefixHandles(array $info): self
@@ -166,14 +134,13 @@ class ClassLoader
 	 * 类名为解析好的限定名称，前面再加上一个 \ 就是对应的完全限定名称。
 	 * 由于这是autoload，不判定是否类已经加载。手工调用本方法时自行注意不要重复加载。
 	 *
-	 * @param string $class
-	 *			需要加载的类名。
+	 * @param string $class 需要加载的类名。
 	 */
-	public function loadClass(string $class)
+	public function loadClass(string $class): void
 	{
 		// 直接显式指定映射的有吗？
-		if (isset($this->class_files[$class])) {
-			$this->includeFile($this->class_files[$class]);
+		if (isset($this->map[$class])) {
+			$this->includeFile($this->map[$class]);
 			return;
 		}
 		
@@ -201,10 +168,9 @@ class ClassLoader
 	 * 如果文件存在则加载之。
 	 * 返回值表示文件是否存在，文件存在不保证加载成功。
 	 *
-	 * @param string $file
-	 *			需要加载的文件名
+	 * @param string $file 需要加载的文件名
 	 */
-	protected function includeFile(string $file)
+	protected function includeFile(string $file): void
 	{
 		// 基于效率考虑，不额外判定 is_readable()，调用方应该保证这一点。
 		// 测试发现 is_readable() 会让速度下降一个数量级。
@@ -215,21 +181,18 @@ class ClassLoader
 	}
 
 	/**
-	 * Class Loader 提供的预设 handle。
-	 * 指定基础目录，将 $relative_class 中的（部分）\与_替换成目录层级，最后加上.php
+	 * Class Loader 提供的预设 handle 。将 classname 按照 namespace 替换为目录层级。
+	 * 指定基础目录，将 $relative_class 中的 \ 替换成目录层级，最后加上.php
 	 * 返回值为符合handle要求的 callable 函数。
 	 *
-	 * 替换的 \ 和 _ 要求之前一个字符不是 \或者_。
-	 * 例：a\_b\d__e 处理得到 a/_b/d/_e.php
-	 *
-	 * @param $base_dir 基础目录，调用方自行负责处理合理性问题			
-	 * @return funciton 符合要求的handle函数。
+	 * @param string $base_dir 基础目录，调用方自行负责处理合理性问题
+	 * @param string $ext 扩展名，默认为“.php”
+	 * @return callable 符合要求的handle函数。
 	 */
 	static public function baseDirHandle(string $base_dir, string $ext = '.php'): callable
 	{
 		return function ($relative_class) use ($base_dir, $ext) {
-			// regex中反斜杠双重转义，要4个反斜杠
-			$file = preg_replace('/([^\\\\_])[\\\\_]/', '\1' . DIRECTORY_SEPARATOR, $relative_class) . $ext;
+			$file = str_replace('\\', DIRECTORY_SEPARATOR, $relative_class) . $ext;
 			return rtrim($base_dir, '/\\') . DIRECTORY_SEPARATOR . $file;
 		};
 	}

@@ -17,7 +17,7 @@ ClassLoader::getInstance()  //获取实例
 $loader = ClassLoader::getInstance();  //获取实例
 $loader->addClassFiles(/* something */); //设定规则
 $loader->register();  //注册到autoload序列
-$loader->addPrefixHandles(/* something */)  //追加规则
+$loader->addPrefixHandles(/* something */);  //追加规则
 ```
 
 目前 ClassLoader 支持两类规则：**类名直接映射**与**namespace前缀处理**
@@ -53,7 +53,7 @@ $obj = new Foo(); //自动加载的是bar.php
 //autoload 所接收到的 classname 为 $prefix.'/'.$relative_classname
 $handle = function($relative_classname, $prefix){ 
 	return 'myDir/'.str_replace('\\', '/'.$relative_classname).'class.php';
-}
+};
 
 $loader = ClassLoader::getInstance()->register();
 $loader->addPrefixHandle('myNamespace', $handle);
