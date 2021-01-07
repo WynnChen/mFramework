@@ -1,23 +1,14 @@
 <?php
 /**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
+ * mFramework
  */
-namespace mFramework;
+namespace mFramework\Router;
 
 /**
  * Router
- *
- * @package mFramework
- * @author Wynn Chen
  */
-Interface Router
+Interface RouterInterface
 {
-
 	/**
 	 * 执行实际的路由工作。
 	 * 成功需要返回action，否则返回false。
@@ -28,5 +19,5 @@ Interface Router
 	 * @param Http\Request $request			
 	 * @return string|bool $action|false
 	 */
-	public function route(Http\Request $request);
+	public function route(Http\Request $request): string|false;
 }

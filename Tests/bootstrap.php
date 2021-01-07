@@ -3,7 +3,7 @@
 namespace
 {
 	include 'dbunit-4.0.0.phar';
-	define('MFROOT', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Lib' . DIRECTORY_SEPARATOR);
+	define('MFROOT', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'mFramework' . DIRECTORY_SEPARATOR);
 
 	spl_autoload_register(function ($class) {
 		if (strpos($class, 'mFramework\\') === 0) {

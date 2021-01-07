@@ -14,10 +14,10 @@ class DispatchersListTest extends PHPUnit\Framework\TestCase
 		$dispatcher->push($dispatcher_b);
 		
 		$dispatcher->setIteratorMode(DispatchersList::MODE_STACK);
-		$this->assertEquals(['some_indexAction','some_indexView'], $dispatcher->dispatch(''));
+		$this->assertEquals('some_indexAction', $dispatcher->dispatch(''));
 		
 		$dispatcher->setIteratorMode(DispatchersList::MODE_QUEUE);
-		$this->assertEquals(['defaultAction','defaultView'], $dispatcher->dispatch(''));
+		$this->assertEquals('defaultAction', $dispatcher->dispatch(''));
 		
 		// 空的就直接false呢
 		$dispatcher = new DispatchersList();

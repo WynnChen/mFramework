@@ -12,7 +12,7 @@ require __DIR__ . '/mFramework/mFramework.php';
 
 // autoload 不同 namespace 前缀映射到路径的配置
 ClassLoader::getInstance()
-	->addPrefixHandles([
+	->addNamespace([
 		'Model' => ClassLoader::baseDirHandle(__DIR__ . '/Model'),
 		'' => ClassLoader::baseDirHandle(__DIR__ . '/_myApp')
 	]);

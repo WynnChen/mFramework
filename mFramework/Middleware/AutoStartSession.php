@@ -16,7 +16,7 @@ namespace mFramework\Middleware;
  * @author Wynn Chen
  *		
  */
-class AutoStartSession extends \mFramework\Middleware
+class AutoStartSession extends \mFramework\AbstractMiddleware
 {
 
 	/**

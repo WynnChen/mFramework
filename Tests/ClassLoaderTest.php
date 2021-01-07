@@ -4,19 +4,22 @@ use mFramework\ClassLoader;
 // 测试用，避免实际的include行为，只检查文件名对不对。
 class ClassLoaderForTest extends ClassLoader
 {
-	public ?string $last_file;
 
-	protected function includeFile(string $file): void
+	public $last_file;
+
+	protected function includeFile(string $file): bool
 	{
 		$this->last_file = $file;
+		return true;
 	}
-
-	public function loadClass(string $class): void
+	
+	public function loadClass(string $class)
 	{
-		$this->last_file = null; //清除cache
+		$this->last_file = null;
 		parent::loadClass($class);
 	}
 }
+
 
 // 测试prefix用的
 class fooHandles
@@ -29,11 +32,17 @@ class fooHandles
 
 /**
  * 实际测试。
- * @author Wynn Chen
+ * @author wynn
+ *
  */
 class ClassLoaderTest extends PHPUnit\Framework\TestCase
 {
-	protected ClassLoader $loader;
+
+	/**
+	 *
+	 * @var ClassLoader
+	 */
+	protected $loader;
 
 	protected function setUp():void
 	{
@@ -53,9 +62,33 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 	}
 
 	/**
+	 * 注册相关测试
+	 */
+	public function testRegister()
+	{
+		$loader = $this->loader;
+		$this->assertFalse($loader->isRegistered());
+		$t = $loader->register();
+		// 操作结果和状态信息应当一致
+		$this->assertSame($loader->isRegistered(), $t);
+		// 重复注册应当不会有问题
+		$loader->register();
+		$this->assertTrue($loader->isRegistered());
+		
+		// 取消注册
+		$t = $loader->unregister();
+		// 状态信息应当一致
+		$this->assertNotSame($loader->isRegistered(), $t);
+		// 重复取消注册也应当ok
+		$loader->unregister();
+		$this->assertFalse($loader->isRegistered());
+	}
+
+
+	/**
 	 * 测试直接指定映射
 	 */
-	public function testClassMap()
+	public function testClassFiles()
 	{
 		$loader = $this->loader;
 		$map = array('class_a' => 'path\to\class.php','ns/class_b' => '../../.\..path');
@@ -76,7 +109,7 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 		$loader->loadClass('class_a');
 		$this->assertEquals('path\to\class.php', $loader->last_file); // 不覆盖。
 		
-		$this->assertEquals($map, $loader->getClassMap());
+		$this->assertEquals($map, $loader->getClassMapping());
 		
 	}
    
@@ -86,10 +119,17 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 	 */
 	public function testBaseDirHandleBaseDir()
 	{
+		$loader = $this->loader;
 		$handle = ClassLoader::baseDirHandle('path/');
 		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'someClass.php', $handle('someClass'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'some' . DIRECTORY_SEPARATOR . 'class.php', $handle('some_class'));
 		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . 'myClass.php', $handle('ns\myClass'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . 'my' . DIRECTORY_SEPARATOR . 'class.php', $handle('ns\my_class'));
 		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . '_class.php', $handle('ns\_class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . '__class.php', $handle('ns\__class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . '_class.php', $handle('_class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . '__class.php', $handle('__class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'some' . DIRECTORY_SEPARATOR . '_class.php', $handle('some__class'));
 	}
 
 	/**
@@ -97,9 +137,10 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 	 */
 	public function testBaseDirHandlePostfix()
 	{
+		$loader = $this->loader;
 		$handle = ClassLoader::baseDirHandle('path/', '.cls.php');
-		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'some_class.cls.php', $handle('some_class'));
-		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . 'class.cls.php', $handle('ns\class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'some' . DIRECTORY_SEPARATOR . 'class.cls.php', $handle('some_class'));
+		$this->assertEquals('path' . DIRECTORY_SEPARATOR . 'ns' . DIRECTORY_SEPARATOR . '_class.cls.php', $handle('ns\_class'));
 	}
 
    
@@ -115,11 +156,11 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 		$map = array('' => array($handles,'handle'),'ns' => array($handles,'handle'));
 	
 		// 返回应该是本体
-		$result = $loader->addPrefixHandles($map);
+		$result = $loader->addNamespace($map);
 		$this->assertSame($loader, $result);
 		
 		// 尝试重新覆盖
-		$loader->addPrefixHandles(['ns' => function () {}]);
+		$loader->addNamespace(['ns' => function () {}]);
 		
 	
 		// 测试调用，顺便测试覆盖无效。
@@ -134,7 +175,7 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 		$loader->loadClass('ns\class_c');
 		$loader->loadClass('ns\class_d');
 		
-		$this->assertEquals($map, $loader->getPrefixHandles());
+		$this->assertEquals($map, $loader->getNamespace());
 	}	
 
 	public function testPriority()
@@ -142,7 +183,7 @@ class ClassLoaderTest extends PHPUnit\Framework\TestCase
 		$loader = new ClassLoaderForTest();
 		$handles = $this->createMock('fooHandles');
 		
-		$loader->addPrefixHandles(['ns' => array($handles,'handle')]);
+		$loader->addNamespace(['ns' => array($handles,'handle')]);
 		
 		$map = array('ns/class_b' => '../../.\..path');
 		

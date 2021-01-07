@@ -21,11 +21,8 @@
 
 	<coverage processUncoveredFiles ="true">
 		<include>
-			<directory suffix=".php">../Lib</directory>
+			<directory suffix=".php">../mFramework</directory>
 		</include>
-		<exclude>
-			<file>../Lib/mFramework.php</file>
-		</exclude>
 	</coverage>
 
 

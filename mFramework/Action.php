@@ -1,19 +1,22 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework;
+
+use JetBrains\PhpStorm\Pure;
+use mFramework\Http\Request;
+use mFramework\Http\Response;
 
 /**
  *
  * Action
  *
- * mFramework 没有 controller 这个层次，直接就是action。
+ * mFramework 没有 controller 这个层次，直接就是 action 。
  *
  * @package mFramework
  * @author Wynn Chen
@@ -21,93 +24,64 @@ namespace mFramework;
  */
 abstract class Action
 {
+	private Request $request;
+	private Response $response;
+	private Application $app;
+	private View|string|null $view;
+	private bool $enable_view = false;
+	private Map $data;
 
-	/**
-	 *
-	 * @var Http\Request
-	 */
-	private $request;
-
-	/**
-	 *
-	 * @var Http\Response
-	 */
-	private $response;
-
-	/**
-	 *
-	 * @var Application
-	 */
-	private $app;
-
-	private $view = null;
-
-	private $enable_view = false;
-
-	private $data;
-
-	/**
-	 *
-	 * @param Http\Request $request			
-	 * @param Http\Response $response			
-	 * @param Application $app			
-	 */
-	public function __construct(Http\Request $request, Http\Response $response, Application $app)
+	public function __construct(Request $request, Response $response, Application $app)
 	{
 		$this->request = $request;
 		$this->response = $response;
 		$this->app = $app;
 		$this->data = new Map();
+		$this->view = $this->getDefaultView();
 	}
 
-	/**
-	 *
-	 * @return Application
-	 */
-	protected function getApp()
+	#[Pure] protected function getDefaultView():string
+	{
+		return substr_replace(self::class, 'View', -6);
+	}
+
+	protected function getApp():Application
 	{
 		return $this->app;
 	}
 
-	/**
-	 *
-	 * @return \mFramework\Http\Request
-	 */
-	protected function getRequest()
+	protected function getRequest():Request
 	{
 		return $this->request;
 	}
 
-	/**
-	 *
-	 * @return \mFramework\Http\Response
-	 */
-	protected function getResponse()
+	protected function getResponse():Response
 	{
 		return $this->response;
 	}
 
 	/**
 	 * View的名称。应当是一个View实例类的名字，或View实例。
-	 * 
+	 *
 	 * 注意这里不能直接初始化，因为不肯定这个类一定存在。
 	 * 逻辑上允许先设置一个事实上不存在的view，在随后的逻辑里再覆盖掉。
 	 * setView()会自动打开 auto_render。
 	 *
-	 * @param string|View $view			
-	 * @throws \mFramework\Http\Response\InvalidViewException
+	 * @param string|View $view
+	 * @return Action
 	 */
-	public function setView($view)
+	public function setView(string|View $view):self
 	{
-		if (!is_string($view) and !($view instanceof View)) {
-			throw new Action\InvalidViewException('invalid View.', 1);
-		}
 		$this->view = $view;
 		$this->enable_view = true;
 		return $this;
 	}
 
-	public function getView()
+	/**
+	 * @return View
+	 * @throws Action\InvalidViewException
+	 */
+	public function getView():View
 	{
 		$view = $this->view;
 		if (is_string($view)) {
@@ -117,22 +91,22 @@ abstract class Action
 			$view = new $view();
 		}
 		if (!$view instanceof View) {
-			throw new Action\InvalidViewException('need string or View ojbect ');
+			throw new Action\InvalidViewException('need string or View object');
 		}
 		return $view;
 	}
 
-	public function disableView()
+	public function disableView():void
 	{
 		$this->enable_view = false;
 	}
 
-	public function enableView()
+	public function enableView():void
 	{
 		$this->enable_view = true;
 	}
 
-	public function isViewEnabled()
+	public function isViewEnabled():bool
 	{
 		return $this->enable_view;
 	}
@@ -143,7 +117,7 @@ abstract class Action
      * @param null $value
      * @return Action
      */
-	public function assign($name, $value = null) : self
+	public function assign(string|iterable $name, $value = null) : self
 	{
 		if(is_iterable($name)){
 			foreach($name as $k=>$v){
@@ -159,9 +133,8 @@ abstract class Action
 	/**
 	 * 取得整个关联的数据对象
 	 *
-	 * @return mFramework\Map
 	 */
-	public function getData()
+	public function getData():Map
 	{
 		return $this->data;
 	}
@@ -169,19 +142,14 @@ abstract class Action
 	/**
 	 * 主执行方法。
 	 */
-	public function execute()
+	public function execute():void
 	{
-		$request = $this->request;
-		$response = $this->response;
-		
-		if($request->isGet()){
-			$this->runGet($request, $response);
-		}
-		elseif($request->isPost()){
-			$this->runPost($request, $response);
-		}
-		else{
-			$this->run($request, $response);
+		if($this->request->isGet()){
+			$this->runGet($this->request, $this->response);
+		}elseif($this->request->isPost()){
+			$this->runPost($this->request, $this->response);
+		}else{
+			$this->run($this->request, $this->response);
 		}
 	}
 
@@ -213,12 +181,12 @@ abstract class Action
 	 * @param Response $response
 	 */
 	protected function run(Http\Request $request, Http\Response $response)
-	{}
+	{
+	}
 }
-namespace mFramework\Action;
 
+namespace mFramework\Action;
 class Exception extends \mFramework\Exception
 {}
-
 class InvalidViewException extends Exception
 {}

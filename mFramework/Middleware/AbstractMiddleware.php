@@ -1,10 +1,9 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework;
@@ -15,12 +14,12 @@ namespace mFramework;
  * @package mFramework
  * @author Wynn Chen
  */
-abstract class Middleware
+abstract class AbstractMiddleware
 {
 
 	/**
 	 *
-	 * @var \mFramework\Middleware|\mFramework\Application 指向下一个Middleware，如果是最后一个Middleware则指向Application本体
+	 * @var \mFramework\AbstractMiddleware|\mFramework\Application 指向下一个Middleware，如果是最后一个Middleware则指向Application本体
 	 */
 	protected $next;
 
@@ -28,7 +27,7 @@ abstract class Middleware
 	 *
 	 * @param
 	 *			\mFramework\Middleware|\mFramework\Application
-	 * @return \mFramework\Middleware $this
+	 * @return \mFramework\AbstractMiddleware $this
 	 */
 	final public function setNextMiddleware($nextMiddleware): self
 	{
@@ -38,7 +37,7 @@ abstract class Middleware
 
 	/**
 	 *
-	 * @return \mFramework\Middleware|\mFramework\Application
+	 * @return \mFramework\AbstractMiddleware|\mFramework\Application
 	 */
 	final public function getNextMiddleware()
 	{

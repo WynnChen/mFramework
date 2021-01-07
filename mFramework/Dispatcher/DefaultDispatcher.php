@@ -1,13 +1,14 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework\Dispatcher;
+
+use mFramework\Dispatcher;
 
 /**
  *
@@ -34,20 +35,14 @@ namespace mFramework\Dispatcher;
  * @author Wynn Chen
  *		
  */
-class DefaultDispatcher implements \mFramework\Dispatcher
+class DefaultDispatcher implements Dispatcher
 {
 
 	/**
 	 *
 	 * @var string 在提供的$action空白的情况下使用的默认action名字
 	 */
-	private $default_action;
-
-	/**
-	 *
-	 * @var string 在提供的$action空白的情况下使用的默认view名字
-	 */
-	private $default_view;
+	private string $default_action;
 
 	/**
 	 * 建立。
@@ -65,18 +60,18 @@ class DefaultDispatcher implements \mFramework\Dispatcher
 
 	/**
 	 * 将传递进入的 $action 信息解析出相应的action类名。
-	 * 如果失败返回false。
+	 * 如果失败返回 false。
 	 *
-	 * @param string $action			
-	 * @return array|bool 对应的action和view类，失败为false
+	 * @param string $action
+	 * @return false|string
 	 */
-	public function dispatch(string $action)
+	public function dispatch(string $action):string|false
 	{
 		$action = trim($action, '/\\');
 		if ($action === '') {
 			$action = $this->default_action;
 		}
-		$str = str_replace(array('/','\\'), '_', $action);
-		return [$str . 'Action',$str . 'View'];
+		$str = str_replace(['/','\\'], '_', $action);
+		return $str.'Action';
 	}
 }

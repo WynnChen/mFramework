@@ -4,7 +4,7 @@ use mFramework\Dispatcher\DefaultDispatcher;
 class DefaultDispatcherTest extends PHPUnit\Framework\TestCase
 {
 
-	public function data()
+	public function data(): array
 	{
 		return array(
 			// action, resut action
@@ -14,18 +14,20 @@ array('some','some'),array('blog/post','blog_post'),array('blog/post/something',
 
 	/**
 	 * @dataProvider data
+	 * @param $action
+	 * @param $class
 	 */
 	public function testDispatch($action, $class)
 	{
 		$dispatcher = new DefaultDispatcher();
-		$this->assertEquals([$class.'Action', $class.'View' ], $dispatcher->dispatch($action));
+		$this->assertEquals($class.'Action', $dispatcher->dispatch($action));
 	}
 
 	public function testDefaultAction()
 	{
 		$dispatcher = new DefaultDispatcher('default');
-		$this->assertEquals(['defaultAction', 'defaultView'], $dispatcher->dispatch(''));
+		$this->assertEquals('defaultAction', $dispatcher->dispatch(''));
 		$dispatcher = new DefaultDispatcher('some/index');
-		$this->assertEquals(['some_indexAction', 'some_indexView'], $dispatcher->dispatch(''));
+		$this->assertEquals('some_indexAction', $dispatcher->dispatch(''));
 	}
 }

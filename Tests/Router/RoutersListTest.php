@@ -1,21 +1,21 @@
 <?php
 use mFramework\Router\DefaultRouter;
 use mFramework\Router\RoutersList;
-use mFramework\Router;
+use mFramework\RouterInterface;
 use mFramework\Http\Request;
 
-class dummyRouter implements Router
+class dummyRouter implements RouterInterface
 {
 
-	public function route(Request $request)
+	public function route(Request $request):string|false
 	{
 		return 'dummy';
 	}
 
-	public function reverseRoute($action, $params = null, $query = [], $fragment = null)
-	{
-		return null;
-	}
+//	public function reverseRoute($action, $params = null, $query = [], $fragment = null)
+//	{
+//		return null;
+//	}
 }
 
 class RoutersListTest extends PHPUnit\Framework\TestCase
@@ -23,7 +23,7 @@ class RoutersListTest extends PHPUnit\Framework\TestCase
 
 	public function testRouterList()
 	{
-		$router = new DefaultRouter();
+		//$router = new DefaultRouter();
 		$_SERVER['REQUEST_URI'] = 'abc/xyz.html';
 		$request = new Request();
 		

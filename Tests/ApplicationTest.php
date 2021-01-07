@@ -1,12 +1,12 @@
 <?php
 use mFramework\Application;
-use mFramework\Middleware;
+use mFramework\AbstractMiddleware;
 use mFramework\Http\Request;
 use mFramework\Http\Response;
 use mFramework\Dispatcher\DefaultDispatcher;
 use mFramework\Router\DefaultRouter;
 
-class middlewareA extends Middleware
+class middlewareA extends AbstractMiddleware
 {
 
 	public function call(Application $app)
@@ -17,7 +17,7 @@ class middlewareA extends Middleware
 	}
 }
 
-class middlewareB extends Middleware
+class middlewareB extends AbstractMiddleware
 {
 
 	public function call(Application $app)

@@ -1,10 +1,6 @@
 <?php
 /**
- * mFramework - a mini PHP framework
- *
- * @package   mFramework
- * @copyright 2009-2020 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
+ * mFramework
  */
 
 /**
@@ -22,12 +18,10 @@
  */
 namespace mFramework;
 
-require __DIR__ . '/ClassLoader.php';
+require __DIR__ . '/mFramework/ClassLoader.php';
 
 // 将框架本身注册好autoload
-ClassLoader::getInstance()
-->addPrefixHandles(['mFramework' => ClassLoader::baseDirHandle(__DIR__)])
-->register();
-
-
-
+ClassLoader::getInstance()->addNamespace([
+	'mFramework' => ClassLoader::baseDirHandle(__DIR__. '/mFramework'),
+	'psr' => ClassLoader::baseDirHandle(__DIR__. '/psr'),
+])->register();

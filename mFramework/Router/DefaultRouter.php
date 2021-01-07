@@ -1,18 +1,15 @@
 <?php
 /**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
+ * mFramework
  */
 namespace mFramework\Router;
+
+use mFramework\Http\Request;
 
 /**
  *
  * 系统的默认路由实现
- * 需要配合urlrewrite才能使用实际用于应用。
+ * 需要配合 urlrewrite 才能使用实际用于应用。
  *
  * 对于 /a/b/c/x-y-z.html 的这样的路径，路径部分作为action，文件名部分url携带的输入参数。
  * 最后一段作为文件名处理（param信息）还是目录处理（action信息）看是否有扩展名。
@@ -29,21 +26,21 @@ namespace mFramework\Router;
  * @author Wynn Chen
  *		
  */
-class DefaultRouter implements \mFramework\Router
+class DefaultRouter implements RouterInterface
 {
 
 	/**
 	 * 尝试按照request的uri的内容进行路由。
 	 * 这里不考虑最后的/问题，交给urlrewrite步骤去统一。
 	 * 标准格式应当是不带最后的/的。
-	 * 
+	 *
 	 * 返回的是action字符串，同时会把额外信息设置到$request中。
 	 *
-	 * @see \mFramework\Router::route()
-	 * @param \mFramework\Request $request			
+	 * @param Request $request
 	 * @return string|false
+	 * @see \mFramework\RouterInterface::route()
 	 */
-	public function route(\mFramework\Http\Request $request)
+	public function route(Request $request):string|false
 	{
 		$url = $request->getUri();
 		
@@ -67,8 +64,7 @@ class DefaultRouter implements \mFramework\Router
 		$request->setParameters($params);
 		
 		// 在windows上根目录会被表示为 \ 而不是 /。但子目录还是使用 / 分隔
-		$action = ltrim($path, '/\\');
-		return $action;
+		return ltrim($path, '/\\');
 	}
 
 	/**
@@ -80,28 +76,30 @@ class DefaultRouter implements \mFramework\Router
 	 * 'filename' : 只指定主文件名
 	 * ['filename']: 只指定主文件名
 	 * ['filename', 'html']:有主文件名和扩展名
-	 * 注意不指定扩展名时扩展名默认为ext。
+	 * 注意不指定扩展名时扩展名默认为html。
 	 * 这里不做额外判断。
 	 *
-	 * 注意默认action是disptcher的问题，router不考虑。
+	 * 注意默认action是dispatcher的问题，router不考虑。
 	 *
+	 * @param string $action
+	 * @param array|null $params
+	 * @param array|null $query
+	 * @param string|null $fragment
+	 * @return string
 	 * @see \mFramework\Route::reverseRoute()
 	 */
-	public function reverseRoute($action, $params = [], $query = [], $fragment = null)
+	public function reverseRoute(string $action, ?array $params = null, ?array $query = null, ?string $fragment = null): string
 	{
 		$url = '/' . trim($action, '/\\'); // 万一有不标准表示法。
 		
 		if ($params) {
-			$input = '';
 			$ext = 'html';
-			
 			if (is_scalar($params)) {
 				$input = $params;
 			} else {
 				$input = array_shift($params);
 				$ext = array_shift($params) ?: $ext;
 			}
-			
 			if ($input) {
 				if ($url !== '/') {
 					$url .= '/';

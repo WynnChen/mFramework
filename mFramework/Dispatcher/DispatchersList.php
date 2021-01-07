@@ -1,13 +1,15 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework\Dispatcher;
+
+use mFramework\Dispatcher;
+use SplDoublyLinkedList;
 
 /**
  * dispatchers doublelinkedlist
@@ -17,14 +19,12 @@ namespace mFramework\Dispatcher;
  * @author Wynn
  *		
  */
-class DispatchersList extends \SplDoublyLinkedList implements \mFramework\Dispatcher
+class DispatchersList extends SplDoublyLinkedList implements Dispatcher
 {
+	CONST MODE_STACK = SplDoublyLinkedList::IT_MODE_LIFO;
+	CONST MODE_QUEUE = SplDoublyLinkedList::IT_MODE_FIFO;
 
-	CONST MODE_STACK = \SplDoublyLinkedList::IT_MODE_LIFO;
-
-	CONST MODE_QUEUE = \SplDoublyLinkedList::IT_MODE_FIFO;
-
-	public function dispatch(string $action)
+	public function dispatch(string $action):string|false
 	{
 		foreach ($this as $dispatcher) {
 			$result = $dispatcher->dispatch($action);

@@ -1,10 +1,6 @@
 <?php
 /**
- * mFramework - a mini PHP framework
- *
- * @package   mFramework
- * @copyright 2009-2020 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
+ * mFramework
  */
 namespace mFramework;
 
@@ -14,7 +10,7 @@ use ArrayObject;
  * mFramework - Map
  *
  * Map是通用的key-value数据容器。旨在提供一种灵活方便的数据封装与访问方式。
- * 对于容器内key为'key'，value为$value的数据，允许用3种不同的方式访问：
+ * 对于容器内key为 'key' ，value为$value的数据，允许用3种不同的方式访问：
  *
  * 方法1：
  * $map->set('key', $value);
@@ -46,6 +42,7 @@ use ArrayObject;
  * 1. 有exchangeArray()方法。
  * 2. Map不需要成为一个 Iterator 。
  *
+ * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 class Map extends ArrayObject
 {
@@ -108,7 +105,7 @@ class Map extends ArrayObject
 	 * 删除某个值。
 	 *
 	 * @param mixed $key
-	 * @return bool
+	 * @return void
 	 */
 	public function del(string $key): void
 	{

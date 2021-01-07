@@ -1,13 +1,16 @@
 <?php
 /**
  * mFramework - a mini PHP framework
- * 
+ *
  * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
+ * @copyright 2009-2020 Wynn Chen
  * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 namespace mFramework;
+
+use mFramework\Application\NoApplicationException;
+use mFramework\Http\Request;
+use mFramework\Http\Response;
 
 /**
  * Application
@@ -22,120 +25,77 @@ namespace mFramework;
  * @package mFramework
  * @author Wynn Chen
  */
-class Application
+class Application extends AbstractMiddleware
 {
-
 	/**
-	 *
-	 * @var \mFramework\Application 保存Application的（第一个）实例
+	 * 保存Application的（第一个）实例
 	 */
-	private static $app = null;
+	private static ?Application $app = null;
 
 	/**
 	 * 按照第一个实例化的App实例。
 	 * 如果没有则抛出异常。
 	 *
-	 * @return \mFramework\Application
-	 * @throws \mFramework\Application\NoApplicationException
+	 * @return Application
+	 * @throws NoApplicationException
 	 */
 	final static public function getApp(): self
 	{
 		if (self::$app === null) {
-			throw new Application\NoApplicationException('No Application has been inited.');
+			throw new Application\NoApplicationException('No Application has been initialized.');
 		}
 		return self::$app;
 	}
 
 	/**
-	 *
-	 * @var string App名称，初始化时建立，可供区分，没有实际业务含义。
+	 * 最外层的middleware，包括Application本身。
 	 */
-	private $name;
+	private AbstractMiddleware $middleware;
 
-	/**
-	 *
-	 * @var \mFramework\Middleware 最外层的middleware，包括Application本身。
-	 */
-	private $middleware;
-
-	/**
-	 *
-	 * @var \mFramework\Router 路由器
-	 */
-	protected $router = null;
-
-	/**
-	 *
-	 * @var \mFramework\Dispatcher 分发器
-	 */
-	protected $dispatcher = null;
-
-	/**
-	 *
-	 * @var \mFramework\Http\Request
-	 */
-	protected $request = null;
-
-	/**
-	 *
-	 * @var \mFramework\Http\Response
-	 */
-	protected $response = null;
-
-	/**
-	 *
-	 * @var \mFramework\Action
-	 */
-	protected $action = null;
+	protected ?RouterInterface $router = null;
+	protected ?Dispatcher $dispatcher = null;
+	protected ?Request $request = null;
+	protected ?Response $response = null;
+	protected ?Action $action = null;
 
 	/**
 	 * 应用程序初始化。
-	 *
-	 * @param string $name
-	 *			应用程序名,识别使用。
+	 * @param string $name 标记名称
 	 */
-	public function __construct(string $name = '')
+	public function __construct(private string $name = '')
 	{
-		$this->name = $name;
 		$this->middleware = $this;
-		
-		// 注册第一个实例化的app
-		if (self::$app === null) {
-			self::$app = $this;
-		}
+		self::$app or (self::$app = $this);
 	}
 
 	/**
 	 * 应用程序名。
-	 *
-	 * @return string
 	 */
-	final public function getAppName()
+	final public function getAppName(): string
 	{
 		return $this->name;
 	}
 
 	/**
 	 * 添加新的 Middleware
-	 *
 	 * Middleware是层层外包覆，后添加的先生效。
-	 *
-	 * @param \mFramework\Middleware $middleware			
-	 * @return \mFramework\Application $this
+	 * @param AbstractMiddleware $middleware
+	 * @return Application
 	 */
-	final public function addMiddleware(Middleware $middleware): self
+	final public function addMiddleware(AbstractMiddleware $middleware): self
 	{
-		$this->middleware = $middleware->setNextMiddleware($this->middleware);
+		$middleware->setNextMiddleware($this->middleware);
+		$this->middleware = $middleware;
 		return $this;
 	}
 
 	/**
 	 * 设置App所使用的路由器。
 	 *
-	 * @param \mFramework\Router $router			
-	 * @return \mFramework\Application $this
+	 * @param RouterInterface $router
+	 * @return Application $this
 	 */
-	final public function setRouter(Router $router): self
+	final public function setRouter(RouterInterface $router): self
 	{
 		$this->router = $router;
 		return $this;
@@ -144,11 +104,11 @@ class Application
 	/**
 	 * 获取之前设置的路由器。
 	 *
-	 * 如果没有设置过则为null。
+	 * 如果没有设置过则为 null。
 	 *
-	 * @return \mFramework\Router|null;
+	 * @return RouterInterface|null;
 	 */
-	final public function getRouter()
+	final public function getRouter(): ?RouterInterface
 	{
 		return $this->router;
 	}
@@ -157,7 +117,7 @@ class Application
 	 * 设置App所使用的分发器。
 	 *
 	 * @param \mFramework\Dispatcher $dispatcher			
-	 * @return \mFramework\Application $this
+	 * @return Application $this
 	 */
 	final public function setDispatcher(Dispatcher $dispatcher): self
 	{
@@ -180,8 +140,8 @@ class Application
 	/**
 	 * 手工设置 request 对象。
 	 *
-	 * @param \mFramework\Request $request			
-	 * @return \mFramework\Application
+	 * @param Http\Request $request
+	 * @return Application
 	 */
 	final public function setRequest(Http\Request $request): self
 	{
@@ -194,9 +154,8 @@ class Application
 	 *
 	 * 如果没有设置过为null。
 	 *
-	 * @return \mFramework\Request|null
 	 */
-	final public function getRequest()
+	final public function getRequest(): ?Request
 	{
 		return $this->request;
 	}
@@ -205,9 +164,9 @@ class Application
 	 * 手工设置 response 对象
 	 *
 	 * @param Response $response			
-	 * @return \mFramework\Application
+	 * @return Application
 	 */
-	public function setResponse(Http\Response $response): self
+	public function setResponse(Response $response): self
 	{
 		$this->response = $response;
 		return $this;
@@ -232,10 +191,9 @@ class Application
 	}
 
 	/**
-	 * app业务逻辑
+	 * app业务逻辑??
+	 * @todo 是否要支持forward？
 	 *
-	 * @throws mfErrorException
-	 * @return unknown
 	 */
 	public function call()
 	{
