@@ -1,360 +1,197 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Http;
 
-use \mFramework\Map;
+use function is_int;
+use function is_string;
+use function sprintf;
 
 /**
- * HTTP Response
+ * 参照 PSR-7 和 PSR-15 的 API 设计。
  *
- * 本Class的基本响应模型：
- * 将response分成response code, header, body,cookie这4个部分看待，
- * 分别有相应的方法组来维护。
- * 在最终response()时，根据这4个部分的信息生成最终的 http response 发回。
- * response code 的抽象模型是code与msg两个字段，
- * header 看成是关联数组， body 则视为字符串。
- * 最终 response code 与 header 信息将用于生成相应的 http response header。
+ * Representation of an outgoing, server-side response.
  *
- * 如果有必要，可以跳过这个标准模式直接接管响应处理，调用
- * setHeaderHandle($callback)与setBodyHandle($callback),
- * 将在适当的时候（response()中）调用这两个callback分别负责发送header与body。
- * 如果需要处理response code和cookie，都要在 header handle 中进行。
+ * Per the HTTP specification, this interface includes properties for
+ * each of the following:
  *
- * 如果再有必要，可以直接用disableAutoResponse()关闭对response()的自动调用，
- * 然后自行在恰当的时候处理输出。注意这种情况下本class无法正确判断是否已经发送响应，需要自行处理。
+ * - Protocol version
+ * - Status code and reason phrase
+ * - Headers
+ * - Message body
  *
- * 本class同时持有View管理，在response()中会尝试进行render()，
- * 这个特性可以用disableAutoRender()关闭。
+ * Responses are considered immutable; all methods that might change state MUST
+ * be implemented such that they retain the internal state of the current
+ * message and return an instance that contains the changed state.
  *
- * auto response： 如果启用，框架会在恰当的时候（运行的末端，并且response()未被调用过）调用response()。
- * auto render： 如果启用，response()中会自动在必要时调用render()
- *
- *
- * @package mFramework
- * @author Wynn Chen
+ * @author Michael Dowling and contributors to guzzlehttp/psr7
+ * @author Tobias Nyholm <tobias.nyholm@gmail.com>
+ * @author Martijn van der Ven <martijn@vanderven.se>
  */
-class Response
+final class Response extends Message
 {
+	/** Map of standard HTTP status code/reason phrases */
+	private const PHRASES = [
+		100 => 'Continue',
+		101 => 'Switching Protocols',
+		102 => 'Processing',
+		200 => 'OK',
+		201 => 'Created',
+		202 => 'Accepted',
+		203 => 'Non-Authoritative Information',
+		204 => 'No Content',
+		205 => 'Reset Content',
+		206 => 'Partial Content',
+		207 => 'Multi-status',
+		208 => 'Already Reported',
+		300 => 'Multiple Choices',
+		301 => 'Moved Permanently',
+		302 => 'Found',
+		303 => 'See Other',
+		304 => 'Not Modified',
+		305 => 'Use Proxy',
+		306 => 'Switch Proxy',
+		307 => 'Temporary Redirect',
+		400 => 'Bad Request',
+		401 => 'Unauthorized',
+		402 => 'Payment Required',
+		403 => 'Forbidden',
+		404 => 'Not Found',
+		405 => 'Method Not Allowed',
+		406 => 'Not Acceptable',
+		407 => 'Proxy Authentication Required',
+		408 => 'Request Time-out',
+		409 => 'Conflict',
+		410 => 'Gone',
+		411 => 'Length Required',
+		412 => 'Precondition Failed',
+		413 => 'Request Entity Too Large',
+		414 => 'Request-URI Too Large',
+		415 => 'Unsupported Media Type',
+		416 => 'Requested range not satisfiable',
+		417 => 'Expectation Failed',
+		418 => 'I\'m a teapot',
+		422 => 'Unprocessable Entity',
+		423 => 'Locked',
+		424 => 'Failed Dependency',
+		425 => 'Unordered Collection',
+		426 => 'Upgrade Required',
+		428 => 'Precondition Required',
+		429 => 'Too Many Requests',
+		431 => 'Request Header Fields Too Large',
+		451 => 'Unavailable For Legal Reasons',
+		500 => 'Internal Server Error',
+		501 => 'Not Implemented',
+		502 => 'Bad Gateway',
+		503 => 'Service Unavailable',
+		504 => 'Gateway Time-out',
+		505 => 'HTTP Version not supported',
+		506 => 'Variant Also Negotiates',
+		507 => 'Insufficient Storage',
+		508 => 'Loop Detected',
+		511 => 'Network Authentication Required'
+	];
+
+	private string $reasonPhrase;
+
+	private int $statusCode;
 
 	/**
-	 * 按照HTTP/1.1， RFC 2616。
-	 * http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3.3
-	 *
-	 * @var array
+	 * @param int $status Status code
+	 * @param array $headers Response headers
+	 * @param string|resource|Stream|null $body Response body
+	 * @param string $version Protocol version
+	 * @param string|null $reason Reason phrase (when empty a default will be used based on the status code)
+	 * @throws InvalidArgumentException
 	 */
-	private static $status_code_info = array(100 => 'Continue',101 => 'Switching Protocols',200 => 'OK',201 => 'Created',202 => 'Accepted',203 => 'Non-Authoritative Information',204 => 'No Content',205 => 'Reset Content',206 => 'Partial Content',300 => 'Multiple Choices',301 => 'Moved Permanently',302 => 'Found',303 => 'See Other',304 => 'Not Modified',305 => 'Use Proxy',307 => 'Temporary Redirect',400 => 'Bad Request',401 => 'Unauthorized',402 => 'Payment Required',403 => 'Forbidden',404 => 'Not Found',405 => 'Method Not Allowed',406 => 'Not Acceptable',407 => 'Proxy Authentication Required',408 => 'Request Timeout',409 => 'Conflict',410 => 'Gone',411 => 'Length Required',412 => 'Precondition Failed',413 => 'Request Entity Too Large',414 => 'Request-URI Too Long',415 => 'Unsupported Media Type',416 => 'Requested Range Not Satisfiable',417 => 'Expectation Failed',500 => 'Internal Server Error',501 => 'Not Implemented',502 => 'Bad Gateway',503 => 'Service Unavailable',504 => 'Gateway Timeout',505 => 'HTTP Version Not Supported');
-
-	private $header = array();
-
-	private $body = null;
-
-	private $cookies = array();
-
-	private $response_code = 200;
-
-	private $response_code_msg = 'OK';
-
-	private $auto_response = true;
-
-	private $sent = false;
-
-	protected $header_handle;
-
-	protected $body_handle;
-
-	public function __construct()
+	public function __construct(int $status = 200, array $headers = [], $body = null, string $version = '1.1', string $reason = null)
 	{
-		$this->data = new Map();
-		$this->header_handle = array($this,'sendHeader');
-		$this->body_handle = array($this,'sendBody');
-	}
-
-	/**
-	 * 禁止自动发送响应
-	 */
-	public function disableAutoResponse()
-	{
-		$this->auto_response = false;
-	}
-
-	/**
-	 * 允许自动发送响应
-	 */
-	public function enableAutoResponse()
-	{
-		$this->auto_response = true;
-	}
-
-	/**
-	 * 自动响应开着？
-	 *
-	 * @return boolean
-	 */
-	public function isAutoResponseEnabled()
-	{
-		return $this->auto_response;
-	}
-
-	/**
-	 * cookie设置
-	 * 注意name相同时将会覆盖前一个设置。
-	 *
-	 * @param string $name
-	 *			名称
-	 * @param string $value
-	 *			值
-	 * @param int|string $time
-	 *			持续时间，如果是int，为timestamp。如果是string，那么将用strtotime()解析为绝对值。
-	 * @param string $path			
-	 * @param string $domain			
-	 * @param bool $secure			
-	 * @param bool $httponly			
-	 */
-	public function setCookie($name, $value, $time = null, $path = '/', $domain = null, $secure = null, $httponly = null)
-	{
-		if ($time !== null and is_string($time)) {
-			$time = strtotime($time);
+		// If we got no body, defer initialization of the stream until Response::getBody()
+		if ('' !== $body && null !== $body) {
+			$this->stream = Stream::create($body);
 		}
-		$this->cookies[$name] = array('value' => $value,'expire' => $time,'path' => $path,'domain' => $domain,'secure' => $secure,'httponly' => $httponly);
-	}
 
-	/**
-	 * 获取将要发送的cookie设置，如果已经设置过，为
-	 * array(
-	 * 'value' => $value,
-	 * 'expires' => $time,
-	 * 'path' => $path,
-	 * 'domain' => $domain,
-	 * 'secure' => $secure,
-	 * 'httponly' => $httponly
-	 * );
-	 * 否则为null。
-	 * 注意不要和request中的cookie混淆。
-	 *
-	 * @param string $name			
-	 * @return array|null
-	 */
-	public function getCookie($name)
-	{
-		if (isset($this->cookies[$name])) {
-			return $this->cookies[$name];
+		$this->statusCode = $status;
+		$this->setHeaders($headers);
+		if (null === $reason && isset(self::PHRASES[$this->statusCode])) {
+			$this->reasonPhrase = self::PHRASES[$status];
 		} else {
-			return null;
+			$this->reasonPhrase = $reason ?? '';
 		}
+
+		$this->protocol = $version;
 	}
 
 	/**
-	 * 设置一个header信息
-	 * 注意name一样的情况下会覆盖之前设置的。
-	 * 如果需要在最终发送中发送多个同类header信息，使用数组作为$content的信息。
-	 * 设置为null等于清除此header
-	 * 状态码不受此影响，需要使用setResponseCode()方法。
+	 * Gets the response status code.
 	 *
+	 * The status code is a 3-digit integer result code of the server's attempt
+	 * to understand and satisfy the request.
 	 *
-	 * 注意如果直接调用header()函数，不受此方法影响。
-	 *
-	 *
-	 * @param string $name			
-	 * @param string|array $content			
+	 * @return int Status code.
 	 */
-	public function setHeader($name, $content)
+	public function getStatusCode(): int
 	{
-		$this->header[$name] = $content;
+		return $this->statusCode;
 	}
 
 	/**
-	 * 取一个header，如果没有设置过则为null
+	 * Gets the response reason phrase associated with the status code.
 	 *
-	 * @param string $name			
-	 * @return string|null
+	 * Because a reason phrase is not a required element in a response
+	 * status line, the reason phrase value MAY be null. Implementations MAY
+	 * choose to return the default RFC 7231 recommended reason phrase (or those
+	 * listed in the IANA HTTP Status Code Registry) for the response's
+	 * status code.
+	 *
+	 * @link http://tools.ietf.org/html/rfc7231#section-6
+	 * @link http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+	 * @return string Reason phrase; must return an empty string if none present.
 	 */
-	public function getHeader($name)
+
+	public function getReasonPhrase(): string
 	{
-		return isset($this->header[$name]) ? $this->header[$name] : null;
+		return $this->reasonPhrase;
 	}
 
 	/**
-	 * 清除所有已经设置的header
-	 */
-	public function clearHeaders()
-	{
-		$this->header = array();
-	}
-
-	/**
-	 * 设置body。设为null即为清除
+	 * Return an instance with the specified status code and, optionally, reason phrase.
 	 *
-	 * @param string $body			
-	 */
-	public function setBody($body)
-	{
-		$this->body = is_null($body) ? null : (string)$body;
-	}
-
-	/**
-	 * 获取body
+	 * If no reason phrase is specified, implementations MAY choose to default
+	 * to the RFC 7231 or IANA recommended reason phrase for the response's
+	 * status code.
 	 *
-	 * @return string|null
-	 */
-	public function getBody()
-	{
-		return $this->body;
-	}
-
-	/**
-	 * 设置返回状态码
+	 * This method MUST be implemented in such a way as to retain the
+	 * immutability of the message, and MUST return an instance that has the
+	 * updated status and reason phrase.
 	 *
-	 * @param int $code
-	 *			状态码
-	 * @param string $msg
-	 *			对应的文字信息，为null时会尝试自动设置
+	 * @link http://tools.ietf.org/html/rfc7231#section-6
+	 * @link http://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
+	 * @param int $code The 3-digit integer result code to set.
+	 * @param ?string $reasonPhrase The reason phrase to use with the
+	 *     provided status code; if none is provided, implementations MAY
+	 *     use the defaults as suggested in the HTTP specification.
+	 * @return static
+	 * @throws InvalidArgumentException For invalid status code arguments.
 	 */
-	public function setResponseCode($code, $msg = null)
+	public function withStatus(int $code, ?string $reasonPhrase = null): self
 	{
+		if (!is_int($code) && !is_string($code)) {
+			throw new InvalidArgumentException('Status code has to be an integer');
+		}
+
 		$code = (int)$code;
-		if ($msg === null and isset(self::$status_code_info[$code])) {
-			$msg = self::$status_code_info[$code];
+		if ($code < 100 || $code > 599) {
+			throw new InvalidArgumentException(sprintf('Status code has to be an integer between 100 and 599. A status code of %d was given', $code));
 		}
-		$this->response_code = $code;
-		$this->response_code_msg = $msg;
-	}
 
-	/**
-	 * 返回状态码信息
-	 *
-	 * @param boolean $with_msg
-	 *			是否需要取得相应的文本信息
-	 * @return string|array 返回的信息
-	 */
-	public function getResponseCode($with_msg = false)
-	{
-		if ($with_msg) {
-			return array('code' => $this->response_code,'msg' => $this->response_code_msg);
-		} else {
-			return $this->response_code;
+		$new = clone $this;
+		$new->statusCode = $code;
+		if ((null === $reasonPhrase || '' === $reasonPhrase) && isset(self::PHRASES[$new->statusCode])) {
+			$reasonPhrase = self::PHRASES[$new->statusCode];
 		}
-	}
+		$new->reasonPhrase = $reasonPhrase ?? '';
 
-	/**
-	 * 快捷方式：响应为一个url跳转。
-	 * 注意在action中不能额外指定view。
-	 *
-	 * 如果需要实现复杂的方案，不要调用本方法，自行在action处理。
-	 *
-	 * @param string $url			
-	 * @param int $code
-	 *			状态码，应当为3xx或201系列。
-	 *			$param string $msg
-	 */
-	public function redirect($url, $code = 302, $msg = null)
-	{
-		$this->setResponseCode($code, $msg);
-		$this->setHeader('Location', $url);
-		$this->setBody(null);
-	}
-
-	/**
-	 * 快捷方式：响应为404.
-	 * 注意在action中不能额外指定view。
-	 *
-	 * 如果需要实现自定义页面等，不要调用本方法，自行在action处理。
-	 */
-	public function notFound()
-	{
-		$this->setResponseCode(404);
-		$this->setBody(null);
-	}
-
-	/**
-	 * 设置header handle
-	 * handle函数的唯一参数是本resposne
-	 *
-	 * @param callable $callback			
-	 * @return callable 之前的handle
-	 */
-	public function setHeaderHandle(Callable $callback)
-	{
-		$old = $this->header_handle;
-		$this->header_handle = $callback;
-		return $old;
-	}
-
-	/**
-	 * 设置body handle
-	 * handle函数的唯一参数是本resposne
-	 *
-	 * @param callable $callback			
-	 * @return callable 之前的handle
-	 */
-	public function setBodyHandle(Callable $callback)
-	{
-		$old = $this->body_handle;
-		$this->body_handle = $callback;
-		return $old;
-	}
-
-	/**
-	 * 尝试发送响应，根据本对象内的heder与body信息。
-	 * 如果$this->rendered == false 同时 $this->auto_render == true 会尝试调用render()
-	 * 如果 $this->auto_response == true，本方法不用手工调用，框架会在适当的时候触发调用。
-	 *
-	 * 在某些特定情况下可能需要跳过response()并手工处理响应，比如直接发送文件下载，等。
-	 * 可以在action或view中调用disableAtuoResponse(),并另行处理。
-	 *
-	 * 注意重复调用response()可能会出现错误（例如header发送失败等），调用方自行判断。
-	 */
-	public function response()
-	{
-		$this->sent = true;
-		$c = $this->header_handle;
-		$c($this);
-		$c = $this->body_handle;
-		$c($this);
-	}
-
-	/**
-	 * 是否已经response()过了。
-	 *
-	 * @return boolean
-	 */
-	public function isResponsed()
-	{
-		return $this->sent;
-	}
-	
-	// 默认header handle。是在内部所以不需要考虑参数了。
-	protected function sendHeader()
-	{
-		// 响应状态码：
-		$protocol = isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1';
-		header($protocol . ' ' . $this->response_code . ' ' . $this->response_code_msg);
-		
-		// 其他header
-		foreach ($this->header as $name => $content) {
-			if (is_array($content) or $content instanceof \Traversable) {
-				foreach ($content as $line) {
-					header($name . ': ' . $line, false);
-				}
-			} else {
-				header($name . ': ' . $content);
-			}
-		}
-		// cookie
-		foreach ($this->cookies as $name => $info) {
-			setcookie($name, $info['value'], $info['expire'], $info['path'], $info['domain'], $info['secure'], $info['httponly']);
-		}
-	}
-
-	protected function sendBody()
-	{
-		echo $this->body;
+		return $new;
 	}
 }
-

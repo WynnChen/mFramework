@@ -10,6 +10,7 @@
 namespace mFramework\Html;
 
 use \mFramework\Html;
+use mFramework\Http\Response;
 use mFramework\Map;
 
 /**
@@ -106,9 +107,9 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		$this->body = $this->documentElement->appendChild($this->createElement('body'));
 		$this->setContainer($this->body);
 		
-		$this->title = $this->createElement('title')
-			->Append('')
-			->appendTo($this->head);
+		$this->title = $this->createElement('title');
+		$this->title->Append('');
+		$this->title->appendTo($this->head);
 	}
 	
 	protected function setTitle($text)
@@ -241,30 +242,27 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		}
 	}
 
-	protected function preRender(Map $data)
+	protected function preRender(?Map $data=null)
 	{}
 
-	protected function postRender(Map $data)
+	protected function postRender(?Map $data=null)
 	{}
 
-	protected function render(Map $data)
+	protected function render(?Map $data=null)
 	{}
 
 	/**
 	 * 渲染response页面
-	 *
-	 * @see \mFramework\View::renderResponse()
+	 * @param Map|null $data
+	 * @return Response
+	 * @throws \mFramework\Http\InvalidArgumentException
 	 */
-	public function renderResponse(\mFramework\Http\Response $response, \mFramework\Map $data)
+	public function renderResponse(?Map $data=null):Response
 	{
-		$this->response = $response;
 		$this->preRender($data);
 		$this->render($data);
 		$this->postRender($data);
-		foreach ($this->getHeader() as $name => $content) {
-			$response->setHeader($name, $content);
-		}
-		$response->setBody($this->getBody());
+		return new Response(headers: $this->getHeader(), body:$this->getBody());
 	}
 }
 namespace mFramework\Html\Document;

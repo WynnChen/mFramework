@@ -1,374 +1,251 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+
+declare(strict_types=1);
+
 namespace mFramework\Http;
 
-use \mFramework\Map;
+use function fopen;
+use function is_resource;
+use function is_string;
+use function move_uploaded_file;
+use function rename;
+use function sprintf;
+use const PHP_SAPI;
+use const UPLOAD_ERR_CANT_WRITE;
+use const UPLOAD_ERR_EXTENSION;
+use const UPLOAD_ERR_FORM_SIZE;
+use const UPLOAD_ERR_INI_SIZE;
+use const UPLOAD_ERR_NO_FILE;
+use const UPLOAD_ERR_NO_TMP_DIR;
+use const UPLOAD_ERR_OK;
+use const UPLOAD_ERR_PARTIAL;
 
 /**
- * 代表经由 HTTP POST 方式上传的文件之相关封装
+ * 参照PSR-7，基于 Nyholm/Psr7 的实现修改而来。
  *
- * 用POST字段名初始化：
- * $info = new UploadFile($key);
+ * 代表 HTTP request 中上传的文件的值对象。
  *
- * 完成之后对象具备两个功能：
- * 1. 对象是一个迭代器，迭代当前关键字对应的上传文件信息（可能有多个文件）；
- * 2. 对象是ArrayAccess，可以直接存取当前单个上传文件的相关信息（name,tmp_name,type,size,error）。
- *
- * 具体有3种情况：
- * 1. 如果指定$key不存在，那么：
- * 迭代器是一个空迭代器：
- * count($info) === 0; //true
- * foreach($info as $file){
- * //循环体完全不会执行到
- * }
- * 当前信息是一个“无上传文件”信息：
- * $info->error === UPLOAD_ERR_NO_FILE; //true
- * //其他字段值均为null
- *
- * 2. 如果指定$key是单个文件，类似于 <input type="file" name="$key"/>，那么：
- * 迭代器只有一个元素：
- * count($info) === 1; //true
- * foreach($info as $file){
- * //只执行一次
- * }
- * 当前信息就是此上传文件信息：
- * echo $info->name; //上传的文件名
- *
- * 3. 如果指定$key是多重文件，类似于<input type="file" name="$key[]"/><input type="file" name="$key[]"/>，那么：
- * 迭代器包含所有文件：
- * count($info); //实际文件数量，注意有可能只有1。
- * foreach($info as $file){
- * //遍历所有多个上传文件
- * }
- * 当前信息就是当前迭代器指向的文件信息，一开始指向第一个：
- * echo $info->name; //指向迭代器的current位置文件的信息。
- * 例，打印所有上传文件名：
- * foreach($info as $file){
- * //随着迭代器遍历，$info指向的信息内容也在跟着变动
- * if($info->error == UPLOAD_ERR_OK){
- * echo $info->name;
- * }
- * }
- *
- * @property string $name
- * @property string $type
- * @property int $size
- * @property string $tmp_name
- * @property int $error
- * @package mFramework
- * @author Wynn Chen
+ * 此类的实例为不可变，各个方法会维持当前实例的状态并返回带有新值的新实例。
  */
-class UploadedFile implements \ArrayAccess, \Countable, \SeekableIterator
+final class UploadedFile
 {
+	private ?string $clientFilename = null;
 
-	const MOVE_ERR_OK = 0;
+	private ?string $clientMediaType = null;
 
-	const MOVE_ERR_MAKE_DIR = 31;
+	private int $error;
 
-	const MOVE_ERR_MOVE_FILE = 32;
+	private ?string $file = null;
 
-	const MOVE_ERR_NOT_UPLOADED_FILE = 33;
+	private bool $moved = false;
 
-	/**
-	 * 记录相关的$_FILES条目信息。
-	 *
-	 * @var array
-	 */
-	protected $info;
+	private int $size;
+
+	private ?Stream $stream = null;
 
 	/**
-	 * 当前指针位置
-	 *
-	 * @var int
+	 * @param resource|Stream|string $streamOrFile
+	 * @param int $size
+	 * @param int $errorStatus
+	 * @param string|null $clientFilename
+	 * @param string|null $clientMediaType
+	 * @throws InvalidArgumentException
 	 */
-	protected $position = 0;
-
-	/**
-	 * 目前正在使用的这个文件信息
-	 *
-	 * @var Map
-	 */
-	protected $data;
-
-	protected $dummy = array('name' => null,'type' => null,'size' => 0,'tmp_name' => null,'error' => UPLOAD_ERR_NO_FILE);
-
-	public function __construct($key)
+	public function __construct(mixed $streamOrFile,
+								int $size,
+								int $errorStatus,
+								?string $clientFilename = null,
+								?string $clientMediaType = null)
 	{
-		$this->data = new Map();
-		
-		// 不存在这个key
-		if (!isset($_FILES[$key])) {
-			$this->info = array();
-			$this->data->exchangeArray($this->dummy);
-			return;
+		if ( match($errorStatus){
+			UPLOAD_ERR_OK,UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE, UPLOAD_ERR_PARTIAL,
+			UPLOAD_ERR_NO_FILE,UPLOAD_ERR_NO_TMP_DIR,UPLOAD_ERR_CANT_WRITE,UPLOAD_ERR_EXTENSION => false,
+			default => true,}) {
+			throw new InvalidArgumentException('Upload file error status must be one of the "UPLOAD_ERR_*" constants.');
 		}
-		
-		$item = $_FILES[$key];
-		if (is_array($_FILES[$key]['error'])) {
-			// 多重文件，重整
-			$array = &$this->info;
-			foreach ($item['error'] as $k => $v) {
-				$array[$k] = array('name' => $item['name'][$k],'type' => $item['type'][$k],'size' => $item['size'][$k],'tmp_name' => $item['tmp_name'][$k],'error' => $v);
-			}
-			$this->data->exchangeArray($array[0]);
-		} else {
-			// 正常单个文件
-			$this->data->exchangeArray($item);
-			$this->info = array($item);
-		}
-	}
 
-	/**
-	 * 是否有实际上传文件？（包括上传过程出错）
-	 *
-	 * @return boolean
-	 */
-	public function isEmpty()
-	{
-		return ($this->error === UPLOAD_ERR_NO_FILE);
-	}
+		$this->error = $errorStatus;
+		$this->size = $size;
+		$this->clientFilename = $clientFilename;
+		$this->clientMediaType = $clientMediaType;
 
-	/**
-	 * 是多个文件？
-	 *
-	 * @return boolean
-	 */
-	public function isMultiple()
-	{
-		return $this->count() > 1;
-	}
-
-	/**
-	 * 有出错么？
-	 *
-	 * @return boolean
-	 */
-	public function hasError()
-	{
-		return $this->error !== 0;
-	}
-
-	/**
-	 * 支持属性式访问
-	 *
-	 * @param unknown $name			
-	 * @return \mFramework\Map
-	 */
-	public function __get($name)
-	{
-		return $this->data[$name];
-	}
-
-	/**
-	 * 正常应该用不到
-	 *
-	 * @param unknown $name			
-	 * @param unknown $value			
-	 */
-	public function __set($name, $value)
-	{
-		$this->data[$name] = $value;
-	}
-
-	/**
-	 * 支持属性式访问
-	 *
-	 * @param unknown $name			
-	 */
-	public function __isset($name)
-	{
-		return isset($this->data[$name]);
-	}
-
-	/**
-	 * 正常应该用不到。
-	 *
-	 * @param unknown $name			
-	 */
-	public function __unset($name)
-	{
-		unset($this->data[$name]);
-	}
-
-	/**
-	 * 直接映射到当前数据条目
-	 *
-	 * @see ArrayAccess::offsetExists()
-	 */
-	public function offsetExists($offset)
-	{
-		return $this->data->offsetExists($offset);
-	}
-
-	/**
-	 * 直接映射到当前数据条目
-	 *
-	 * @see ArrayAccess::offsetGet()
-	 */
-	public function offsetGet($offset)
-	{
-		return $this->data->offsetGet($offset);
-	}
-
-	/**
-	 * 直接映射到当前数据条目
-	 * 正常应该用不到这个操作。
-	 *
-	 * @see ArrayAccess::offsetSet()
-	 */
-	public function offsetSet($offset, $value)
-	{
-		return $this->data->offsetSet($offset, $value);
-	}
-
-	/**
-	 * 直接映射到当前数据条目
-	 * 正常应该用不到这个操作。
-	 *
-	 * @see ArrayAccess::offsetUnset()
-	 */
-	public function offsetUnset($offset)
-	{
-		return $this->data->offsetUnset($offset);
-	}
-
-	public function valid()
-	{
-		return isset($this->info[$this->position]);
-	}
-
-	public function current()
-	{
-		return $this;
-	}
-
-	public function next()
-	{
-		$this->position += 1;
-		$this->seek($this->position);
-	}
-
-	public function rewind()
-	{
-		$this->seek(0);
-	}
-
-	public function key()
-	{
-		return $this->position;
-	}
-
-	public function seek($position)
-	{
-		$this->position = $position;
-		if (isset($this->info[$position])) {
-			$this->data->exchangeArray($this->info[$position]);
-		} else {
-			$this->data->exchangeArray($this->dummy);
-		}
-	}
-
-	/**
-	 * 返回文件信息的个数。
-	 *
-	 * @return int
-	 */
-	public function count()
-	{
-		return count($this->info);
-	}
-
-	/**
-	 * 取得上传文件的内容（字符串）
-	 * 注意本方法自身不判定错误，需要自行预先判定是否有出错。
-	 *
-	 * @codeCoverageIgnore
-	 *
-	 * @return string|boolean 文件内容，出错时返回false
-	 */
-	public function getFileContents()
-	{
-		if (is_uploaded_file($this->tmp_name)) {
-			return (@file_get_contents($this->tmp_name));
-		} else {
-			return false;
-		}
-	}
-
-	/**
-	 * 移动到目标位置去。注意如果中途失败可能会留下空目录。
-	 *
-	 * @codeCoverageIgnore
-	 *
-	 * @param string $dest
-	 *			目标文件名，包括全路径
-	 * @return int 错误码，self::MOVE_ERR_*系列
-	 */
-	public function moveFile($dest)
-	{
-		
-		// 要弄出目录来先：
-		@mkdir(dirname($dest), 0777, true);
-		if (!move_uploaded_file($this->tmp_name, $dest)) {
-			if (is_uploaded_file($this->tmp_name)) {
-				return self::MOVE_ERR_MOVE_FILE;
+		if ($this->error === UPLOAD_ERR_OK) {
+			// Depending on the value set file or stream variable.
+			if (is_string($streamOrFile)) {
+				$this->file = $streamOrFile;
+			} elseif (is_resource($streamOrFile)) {
+				$this->stream = Stream::create($streamOrFile);
+			} elseif ($streamOrFile instanceof Stream) {
+				$this->stream = $streamOrFile;
 			} else {
-				return self::MOVE_ERR_NOT_UPLOADED_FILE;
+				throw new InvalidArgumentException('Invalid stream or file provided for UploadedFile');
 			}
 		}
-		return self::MOVE_ERR_OK;
+	}
+
+
+	/**
+	 * @throws RuntimeException if is moved or not ok
+	 */
+	private function validateActive(): void
+	{
+		if ($this->error !== UPLOAD_ERR_OK) {
+			throw new RuntimeException('Cannot retrieve stream due to upload error');
+		}
+
+		if ($this->moved) {
+			throw new RuntimeException('Cannot retrieve stream after it has already been moved');
+		}
+	}
+
+	/**
+	 * @return Stream
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
+	 */
+	public function getStream(): Stream
+	{
+		$this->validateActive();
+
+		if ($this->stream instanceof Stream) {
+			return $this->stream;
+		}
+
+		$resource = fopen($this->file, 'r');
+
+		return Stream::create($resource);
+	}
+
+
+	/**
+	 * 解析文件大小
+	 *
+	 * 如果可能，返回的是 $_FILES['size'] 的内容。 这个值由 PHP 基于传输的实际大小来计算。
+	 *
+	 * @return int 文件大小，byte；或者 null，如果未知
+	 */
+	public function getSize(): int
+	{
+		return $this->size;
+	}
+
+	/**
+	 * 和此上传文件对应的错误码。
+	 *
+	 * 返回值是 PHP 的 UPLOAD_ERR_XXX 系列常量之一。
+	 *
+	 * 如果成功完成上传，返回 UPLOAD_ERR_OK.
+	 *
+	 * 返回的是 $_FILES['error'] 的内容
+	 *
+	 * @see http://php.net/manual/en/features.file-upload.errors.php
+	 * @return int PHP 的 UPLOAD_ERR_XXX 系列常量之一
+	 */
+	public function getError(): int
+	{
+		return $this->error;
+	}
+
+	/**
+	 * 客户端发送的文件名
+	 *
+	 * 即 $_FILES['name'] 的内容。
+	 *
+	 * 不能依赖于这个值，客户端可能会发送格式异常的文件名作为潜在攻击手段。
+	 *
+	 * @return string|null 客户端发送的文件名，没有的话为 null
+	 */	public function getClientFilename(): ?string
+	{
+		return $this->clientFilename;
+	}
+
+	/**
+	 * 客户端发送的 media type 信息
+	 *
+	 * 即 $_FILES['type'] 的内容。
+	 *
+	 * 不能依赖于这个值，客户端可能会发送格式异常的内容作为潜在攻击手段。
+	 *
+	 * @return string|null 客户端发送的 media type，没有的话为 null
+	 */
+	public function getClientMediaType(): ?string
+	{
+		return $this->clientMediaType;
+	}
+
+	/**
+	 * 将上传的文件移动到新位置。
+	 *
+	 * 用此方法来代替 move_uploaded_file()。 此方法会检查所处环境，决定应当调用
+	 * move_uploaded_file(), rename(), 还是 stream 操作来完成本操作。
+	 *
+	 * $targetPath 必须是绝对路径或相对路径。如果是相对路径，则按照 PHP 的 rename() 所使用的规则进行解析。
+	 *
+	 * 完成之后，会删掉原始的文件或 stream 。
+	 *
+	 * 如果本方法调用不止一次，从第二次开始，会抛出异常。
+	 *
+	 * 在 SAPI 环境下（有 $_FILES），本方法会调用 is_uploaded_file() 和 move_uploaded_file()
+	 * 来确保正确验证权限和上传状态。
+	 *
+	 * 如果打算把文件移动到某个 stream，需要改用 getStream()，因为 SAPI 操作并不能保证正确写入
+	 * stream 目标
+	 *
+	 * @see http://php.net/is_uploaded_file
+	 * @see http://php.net/move_uploaded_file
+	 * @param string $targetPath 移动的目标路径+文件名。
+	 * @throws InvalidArgumentException 如果指定 $targetPath 无效.
+	 * @throws RuntimeException 如果多次调用
+	 */
+	public function moveTo(string $targetPath): void
+	{
+		$this->validateActive();
+
+		if ($targetPath === '') {
+			throw new InvalidArgumentException('Invalid path provided for move operation; must be a non-empty string');
+		}
+
+		if (null !== $this->file) {
+			$this->moved = ('cli' === PHP_SAPI) ? rename($this->file, $targetPath) : move_uploaded_file($this->file, $targetPath);
+		} else {
+			$stream = $this->getStream();
+			if ($stream->isSeekable()) {
+				$stream->rewind();
+			}
+
+			// Copy the contents of a stream into another stream until end-of-file.
+			$dest = Stream::create(fopen($targetPath, 'w'));
+			while (!$stream->eof()) {
+				if (!$dest->write($stream->read(1048576))) { break; }
+			}
+
+			$this->moved = true;
+		}
+
+		if (false === $this->moved) {
+			throw new RuntimeException(sprintf('Uploaded file could not be moved to %s', $targetPath));
+		}
 	}
 
 	/**
 	 * 上传时各种错误的对应信息
 	 * 注意：UPLOAD_ERR_OK和self::MOVE_ERR_OK是没有错误信息的。
 	 *
-	 * @param int $error			
+	 * @param int $error
 	 * @return string
 	 */
-	static public function getErrorMsg($error)
+	static public function errorMsg(int $error): string
 	{
-		switch ($error) {
-			case UPLOAD_ERR_INI_SIZE:
-				return '上传的文件尺寸超过系统允许上限。';
-				break;
-			case UPLOAD_ERR_FORM_SIZE:
-				return '上传的文件尺寸超过表单允许上限。';
-				break;
-			case UPLOAD_ERR_PARTIAL:
-				return '文件只有部分完成上传。';
-				break;
-			case UPLOAD_ERR_NO_FILE:
-				return '没有上传文件。';
-				break;
-			case UPLOAD_ERR_NO_TMP_DIR:
-				return '找不到临时目录。';
-				break;
-			case UPLOAD_ERR_CANT_WRITE:
-				return '无法写入磁盘。';
-				break;
-			case UPLOAD_ERR_EXTENSION:
-				return '某个功能模块阻止了文件上传。';
-				break;
-			case self::MOVE_ERR_MAKE_DIR:
-				return '无法创建目标目录。';
-				break;
-			case self::MOVE_ERR_MOVE_FILE:
-				return '无法写入目标文件。';
-				break;
-			case self::MOVE_ERR_NOT_UPLOADED_FILE:
-				return '上传文件信息有问题。'; // 可能是攻击。
-				break;
-			default:
-				return '未知错误';
-				break;
-		}
+		return match ($error) {
+			UPLOAD_ERR_INI_SIZE => '上传的文件尺寸超过系统允许上限。',
+			UPLOAD_ERR_FORM_SIZE =>  '上传的文件尺寸超过表单允许上限。',
+			UPLOAD_ERR_PARTIAL => '文件只有部分完成上传。',
+			UPLOAD_ERR_NO_FILE => '没有上传文件。',
+			UPLOAD_ERR_NO_TMP_DIR => '找不到临时目录。',
+			UPLOAD_ERR_CANT_WRITE => '无法写入磁盘。',
+			UPLOAD_ERR_EXTENSION => '某个功能模块阻止了文件上传。',
+			default => '未知错误',
+		};
 	}
+
 }

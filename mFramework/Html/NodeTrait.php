@@ -1,23 +1,10 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * Require PHP 7 since v4.0
- *
- * @package   mFramework
- * @version   4.0
- * @copyright 2009 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
 namespace mFramework\Html;
 
+use DOMNode;
+
 /**
- *
- * node trait
- *
- * @package mFramework
- * @author Wynn Chen
- *		
+ * Used by Document Element Fragment etc.
  */
 trait NodeTrait
 {
@@ -34,7 +21,7 @@ trait NodeTrait
 		if (is_scalar($node) or $node === null) {
 			$node = new Text($node); // 马上就要被append了，直接new无所谓。
 		}
-		if (!$node instanceof \DOMNode) { // 因为不保证传来的是什么，只能用这个。
+		if (!$node instanceof DOMNode) { // 因为不保证传来的是什么，只能用这个。
 			throw new InvalidNodeException();
 		}
 		return $node;
@@ -47,7 +34,7 @@ trait NodeTrait
 	 *			DOMNode 检测节点，不指定的话检测$this
 	 * @return DOMNode $this->parentNode
 	 */
-	private function requireParent(\DOMNode $node = null)
+	private function requireParent(DOMNode $node = null)
 	{
 		$node = $node ?: $this;
 		$parent = $node->parentNode;
@@ -56,56 +43,17 @@ trait NodeTrait
 		}
 		return $parent;
 	}
-	
+
 	/**
-	 * 可以用 ::create() 代替 new
-	 * @param unknown ...$args
-	 * @return unknown
+	 * 允许可以用 ::create() 代替 new
+	 * @param mixed ...$args
+	 * @return static
 	 */
-	public static function create(...$args)
+	public static function create(...$args): static
 	{
 		return new static(...$args);
 	}
 
-	/**
-	 * 往本节点下附加子节点，数量不限。
-	 * 添加的节点在最前面。
-	 * 节点内容可以是Node或标量，标量及null自动转换为Text节点。
-	 *
-	 * 完成之后新节点的顺序和参数顺序是一样的：
-	 * 如果 $div 是 <div><br/></div>， $input 是 <input/>，$img 是 <img/>
-	 * 进行 $div->$prepend($input, $img) 之后，
-	 * 结果是： <div><input/><img/><br/></div>
-	 *
-	 * @param ...$children DOMNode|scalar			
-	 * @return self $this
-	 */
-	public function prepend(...$children)
-	{
-		$ref = $this->firstChild;
-		foreach ($children as $node) {
-			$this->insertBefore($this->prepareNode($node), $ref);
-		}
-		return $this;
-	}
-
-	/**
-	 * 往本节点下附加子节点，数量不限。
-	 * 添加的节点在最后面。
-	 * 节点内容可以是Node或标量，标量及null自动转换为Text节点。
-	 *
-	 * 新节点出现顺序与参数顺序一样。
-	 *
-	 * @param ...$children DOMNode|scalar			
-	 * @return self $this
-	 */
-	public function append(...$children)
-	{
-		foreach ($children as $node) {
-			$this->appendChild($this->prepareNode($node));
-		}
-		return $this;
-	}
 
 	/**
 	 * 将本节点附加到$node下，成为第一个子节点。
@@ -114,7 +62,7 @@ trait NodeTrait
 	 * @param DOMNode $node			
 	 * @return self $this
 	 */
-	public function prependTo(\DOMNode $node)
+	public function prependTo(DOMNode $node)
 	{
 		$node->prepend($this); // document有容器机制
 		return $this;
@@ -127,7 +75,7 @@ trait NodeTrait
 	 * @param DOMNode $node			
 	 * @return self $this
 	 */
-	public function appendTo(\DOMNode $node)
+	public function appendTo(DOMNode $node)
 	{
 		$node->append($this); // document有容器机制
 		return $this;
@@ -182,7 +130,7 @@ trait NodeTrait
 	 * @param $node DOMNode
 	 *			指定参照节点
 	 * @throws NeedParentException 指定参照节点必须有父节点
-	 * @return self $this
+	 * @return static $this
 	 */
 	public function injectBefore($node)
 	{
@@ -229,7 +177,7 @@ trait NodeTrait
 	 * @throws NeedParentException 指定参照节点必须有父节点
 	 * @return self
 	 */
-	public function replace(\DOMNode $node)
+	public function replace(DOMNode $node)
 	{
 		$parent = $this->requireParent($node);
 		$parent->replaceChild($this, $node);

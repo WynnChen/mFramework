@@ -1,7 +1,5 @@
 <?php
-/**
- * mFramework
- */
+
 namespace mFramework\Cache;
 
 use DateInterval;

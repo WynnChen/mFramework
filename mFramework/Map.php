@@ -1,7 +1,6 @@
 <?php
-/**
- * mFramework
- */
+declare(strict_types=1);
+
 namespace mFramework;
 
 use ArrayObject;

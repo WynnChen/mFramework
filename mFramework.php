@@ -21,7 +21,6 @@ namespace mFramework;
 require __DIR__ . '/mFramework/ClassLoader.php';
 
 // 将框架本身注册好autoload
-ClassLoader::getInstance()->addNamespace([
-	'mFramework' => ClassLoader::baseDirHandle(__DIR__. '/mFramework'),
-	'psr' => ClassLoader::baseDirHandle(__DIR__. '/psr'),
-])->register();
+ClassLoader::getInstance()
+	->addNamespace('mFramework', ClassLoader::baseDirHandle(__DIR__. '/mFramework'))
+	->register();

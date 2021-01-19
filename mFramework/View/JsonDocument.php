@@ -1,25 +1,16 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * Require PHP 7 since v4.0
- *
- * @package   mFramework
- * @version   4.0
- * @copyright 2009 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
 namespace mFramework\View;
+
+use mFramework\Http\InvalidArgumentException;
+use mFramework\Http\Response;
+use mFramework\Map;
+use mFramework\View;
 
 /**
  *
  * json View
- *
- * @package mFramework
- * @author Wynn Chen
- *		
  */
-class JsonDocument implements \mFramework\View
+class JsonDocument implements View
 {
 	protected $key;
 	protected $options =  JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
@@ -61,21 +52,19 @@ class JsonDocument implements \mFramework\View
 	{
 		$this->depth = $depth;
 	}
-	
-	
-	
+
+
 	/**
 	 * 一般 $data直接转json，除非调用 $this->setKey() 指定了特定key，那么改用 $data[$key]
-	 * 
-	 * {@inheritDoc}
-	 * @see \mFramework\View::renderResponse()
+	 *
+	 * @param Map|null $data
+	 * @return Response
+	 * @throws InvalidArgumentException
 	 */
-	public function renderResponse(\mFramework\Http\Response $response, \mFramework\Map $data)
+	public function renderResponse(?Map $data=null):Response
 	{
-		$response->setHeader('Content-type', 'application/json; charset=utf-8');
-		$response->setBody(json_encode($this->key ? $data[$this->key] : $data, $this->options, $this->depth) );
+		return new Response(
+			headers: ['Content-type'=> 'application/json; charset=utf-8'],
+			body: json_encode($this->key ? $data[$this->key] : $data, $this->options, $this->depth));
 	}
 }
-
-class Exception extends \mFramework\Exception
-{}

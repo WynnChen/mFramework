@@ -1,7 +1,5 @@
 <?php
-/**
- * mFramework
- */
+
 namespace mFramework\Cache;
 
 use DateInterval;
@@ -54,7 +52,7 @@ class ArrayCache implements CacheInterface
 			$eol = (float)((string)$d->getTimestamp().'.'.$d->format('F'));
 		}
 		else{
-			$eol = ($ttl === null) ? (microtime(true) + $ttl) : PHP_INT_MAX;
+			$eol = ($ttl === null) ? PHP_INT_MAX : (microtime(true) + $ttl);
 		}
 		$this->cache[$key] = [$value, $eol];
 		return true;

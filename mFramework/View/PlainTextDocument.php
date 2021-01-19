@@ -11,6 +11,9 @@
  */
 namespace mFramework\View;
 
+use mFramework\Http\Response;
+use mFramework\Map;
+
 /**
  *
  * 纯文本 View
@@ -31,16 +34,17 @@ class PlainTextDocument implements \mFramework\View
 	{
 		$this->charset = $charset;
 	}
-	
+
 	/**
 	 * 逐个输出$data内容。
-	 * {@inheritDoc}
-	 * @see \mFramework\View::renderResponse()
+	 * @param Map|null $data
+	 * @return Response
+	 * @throws \mFramework\Http\InvalidArgumentException
 	 */
-	public function renderResponse(\mFramework\Http\Response $response, \mFramework\Map $data)
+	public function renderResponse(?Map $data=null):Response
 	{
-		$response->setHeader('Content-type', 'text/plain; charset='.$this->charset);
-		$response->setBody(implode('', (array)$data));
+		return new Response(headers:['Content-type' => 'text/plain; charset='.$this->charset],
+			body: implode('', (array)$data));
 	}
 }
 

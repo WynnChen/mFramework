@@ -1,11 +1,6 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- *
- * @package   mFramework
- * @copyright 2009-2020 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework;
 
 use JetBrains\PhpStorm\Pure;
@@ -18,138 +13,46 @@ use mFramework\Http\Response;
  *
  * mFramework 没有 controller 这个层次，直接就是 action 。
  *
- * @package mFramework
- * @author Wynn Chen
- *		
  */
-abstract class Action
+abstract class Action implements RequestHandlerInterface
 {
-	private Request $request;
-	private Response $response;
-	private Application $app;
-	private View|string|null $view;
-	private bool $enable_view = false;
+	private View|string|null $view = null;
+	private bool $enable_view = true;
+
 	private Map $data;
 
-	public function __construct(Request $request, Response $response, Application $app)
+	public function __construct()
 	{
-		$this->request = $request;
-		$this->response = $response;
-		$this->app = $app;
 		$this->data = new Map();
-		$this->view = $this->getDefaultView();
-	}
-
-	#[Pure] protected function getDefaultView():string
-	{
-		return substr_replace(self::class, 'View', -6);
-	}
-
-	protected function getApp():Application
-	{
-		return $this->app;
-	}
-
-	protected function getRequest():Request
-	{
-		return $this->request;
-	}
-
-	protected function getResponse():Response
-	{
-		return $this->response;
-	}
-
-	/**
-	 * View的名称。应当是一个View实例类的名字，或View实例。
-	 *
-	 * 注意这里不能直接初始化，因为不肯定这个类一定存在。
-	 * 逻辑上允许先设置一个事实上不存在的view，在随后的逻辑里再覆盖掉。
-	 * setView()会自动打开 auto_render。
-	 *
-	 * @param string|View $view
-	 * @return Action
-	 */
-	public function setView(string|View $view):self
-	{
-		$this->view = $view;
-		$this->enable_view = true;
-		return $this;
-	}
-
-	/**
-	 * @return View
-	 * @throws Action\InvalidViewException
-	 */
-	public function getView():View
-	{
-		$view = $this->view;
-		if (is_string($view)) {
-			if (!class_exists($view)) {
-				throw new Action\InvalidViewException('View not found: ' . $view);
-			}
-			$view = new $view();
-		}
-		if (!$view instanceof View) {
-			throw new Action\InvalidViewException('need string or View object');
-		}
-		return $view;
-	}
-
-	public function disableView():void
-	{
-		$this->enable_view = false;
-	}
-
-	public function enableView():void
-	{
-		$this->enable_view = true;
-	}
-
-	public function isViewEnabled():bool
-	{
-		return $this->enable_view;
-	}
-
-    /**
-     * 将数据关联给view
-     * @param iterable|string $name
-     * @param null $value
-     * @return Action
-     */
-	public function assign(string|iterable $name, $value = null) : self
-	{
-		if(is_iterable($name)){
-			foreach($name as $k=>$v){
-				$this->data->offsetSet($k, $v);
-			}
-		}
-		else{
-			$this->data->offsetSet($name, $value);
-		}
-		return $this;
-	}
-
-	/**
-	 * 取得整个关联的数据对象
-	 *
-	 */
-	public function getData():Map
-	{
-		return $this->data;
 	}
 
 	/**
 	 * 主执行方法。
+	 *
+	 * 如果 runXX() 返回了 Response 实例，直接使用，否则尝试调用 view 渲染
+	 *
+	 * @param Request $request
+	 * @return Response
+	 * @throws ActionException
+	 * @throws Http\InvalidArgumentException
 	 */
-	public function execute():void
+	public function handle(Request $request): Response
 	{
-		if($this->request->isGet()){
-			$this->runGet($this->request, $this->response);
-		}elseif($this->request->isPost()){
-			$this->runPost($this->request, $this->response);
-		}else{
-			$this->run($this->request, $this->response);
+		//根据 $request 的 method 来决定跑什么
+		$result = match ($request->getMethod()) {
+			'GET' => $this->runGet($request),
+			'POST' => $this->runPost($request),
+			default => $this->run($request),
+		};
+
+		if ($result instanceof Response) {
+			return $result;
+		} else {
+			if ($this->isViewEnabled()) {
+				return $this->getView()->renderResponse();
+			} else {
+				return new Response(status: 200, body: $result);
+			}
 		}
 	}
 
@@ -157,36 +60,123 @@ abstract class Action
 	 * 本action的业务逻辑,GET方法时
 	 *
 	 * @param Request $request
-	 * @param Response $response
+	 * @return mixed Response实例或者对 Response 的 body 有效的所有类型。
+	 * @noinspection PhpMissingReturnTypeInspection
 	 */
-	protected function runGet(Http\Request $request, Http\Response $response)
+	protected function runGet(Request $request)
 	{
-		$this->run($request, $response);
+		return $this->run($request);
 	}
-	/**
-	 * 本action的业务逻辑,POST方法时
-	 *
-	 * @param Request $request
-	 * @param Response $response
-	 */
-	protected function runPost(Http\Request $request, Http\Response $response)
-	{
-		$this->run($request, $response);
-	}
-	
+
 	/**
 	 * 本action的业务逻辑,默认版本
 	 *
 	 * @param Request $request
-	 * @param Response $response
+	 * @return mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @noinspection PhpMissingReturnTypeInspection
+	 * @noinspection PhpUnusedParameterInspection
 	 */
-	protected function run(Http\Request $request, Http\Response $response)
+	protected function run(Request $request)
 	{
+		//子类一般实现这个方法。
+		return '';
+	}
+
+	/**
+	 * 本action的业务逻辑,POST方法时
+	 *
+	 * @param Request $request
+	 * @return mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @noinspection PhpMissingReturnTypeInspection
+	 */
+	protected function runPost(Request $request)
+	{
+		return $this->run($request);
+	}
+
+	protected function isViewEnabled(): bool
+	{
+		return $this->enable_view;
+	}
+
+	/**
+	 * @return View
+	 * @throws ActionException
+	 */
+	protected function getView(): View
+	{
+		$view = $this->view;
+
+		if ($view === null) {
+			$view = $this->getDefaultView();
+		}
+
+		if (is_string($view)) {
+			if (!class_exists($view)) {
+				throw new ActionException('View not found: ' . $view);
+			}
+			$view = new $view();
+		}
+
+		if (!$view instanceof View) {
+			throw new ActionException('need string or View object');
+		}
+
+		return $view;
+	}
+
+	/**
+	 * View的名称。应当是一个View实例类的名字，或View实例。
+	 *
+	 * 注意这里不能直接初始化，因为不肯定这个类一定存在。
+	 * 逻辑上允许先设置一个事实上不存在的view，在随后的逻辑里再覆盖掉。
+	 * setView()会自动 enableView();
+	 *
+	 * @param string|View $view
+	 * @return Action
+	 */
+	protected function setView(string|View $view): self
+	{
+		$this->view = $view;
+		$this->enable_view = true;
+		return $this;
+	}
+
+	#[Pure] protected function getDefaultView(): string
+	{
+		return substr_replace($this::class, 'View', -6);
+	}
+
+	protected function disableView(): void
+	{
+		$this->enable_view = false;
+	}
+
+	protected function enableView(): void
+	{
+		$this->enable_view = true;
+	}
+
+	/**
+	 * 关联数据，随后给View用。
+	 * @param iterable|string $name
+	 * @param mixed $value
+	 * @return Action
+	 */
+	protected function assign(string|iterable $name, mixed $value = null): self
+	{
+		if (is_iterable($name)) {
+			foreach ($name as $k => $v) {
+				$this->data->offsetSet($k, $v);
+			}
+		} else {
+			$this->data->offsetSet($name, $value);
+		}
+		return $this;
+	}
+
+	protected function getData(): Map
+	{
+		return $this->data;
 	}
 }
-
-namespace mFramework\Action;
-class Exception extends \mFramework\Exception
-{}
-class InvalidViewException extends Exception
-{}

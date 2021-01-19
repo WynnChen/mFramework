@@ -1,7 +1,6 @@
 <?php
-/**
- * mFramework
- */
+declare(strict_types=1);
+
 namespace mFramework;
 
 /**
@@ -19,7 +18,6 @@ namespace mFramework;
  *
  * ClassLoader不负责处理格式验证等问题，调用方自行保证
  *
- * @author	Wynn Chen <wynn.chen@outlook.com>
  */
 class ClassLoader
 {
@@ -153,7 +151,7 @@ class ClassLoader
 			$relative_class = substr($class, $pos + 1);
 			if (isset($this->prefixes[$prefix])) {
 				foreach($this->prefixes[$prefix] as $handle){
-					if($file = $handle($relative_class)){
+					if($file = $handle($relative_class, $prefix)){
 						$this->includeFile($file);
 						return;
 					}
@@ -163,7 +161,7 @@ class ClassLoader
 		// 落到全局空间
 		if (isset($this->prefixes[''])) {
 			foreach($this->prefixes[''] as $handle){
-				if($file = $handle($class)){
+				if($file = $handle($class, '')){
 					$this->includeFile($file);
 					return;
 				}
