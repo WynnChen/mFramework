@@ -82,7 +82,7 @@ abstract class Connection extends \PDO
 	 * @param string $name 名称
 	 * @param Array|\mFramework\Database\Connection $connection
 	 *			链接实例或配置参数
-	 * @throws Database\ConnectionException 提供的如果是配置参数又初始化失败时抛出
+	 * @throws ConnectionException 提供的如果是配置参数又初始化失败时抛出
 	 * @return boolean 是否成功设置。重复设置同一个名称时返回false
 	 */
 	static public function set($name, $connection = null)
@@ -273,11 +273,11 @@ abstract class Connection extends \PDO
 	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
 	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
 	 *
-	 * @param unknown $fn
+	 * @param callable $fn
 	 * @param unknown ...$args
-	 * @throws TransactionException
+	 * @return mixed $fn()的返回值，执行时失败返回false
 	 */
-	public function doTransaction($fn, ...$args)
+	public function doTransaction(callable $fn, mixed ...$args): mixed
 	{
 		try{
 			$this->beginTransaction();
