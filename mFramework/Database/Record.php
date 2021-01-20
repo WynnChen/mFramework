@@ -1,15 +1,10 @@
-<?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+<?php /** @noinspection PhpUnused */
+
 namespace mFramework\Database;
 
+use mFramework\Map;
 use \mFramework\Utility\Paginator;
+use PDO;
 
 /**
  * 对数据库单行记录的封装。
@@ -18,41 +13,22 @@ use \mFramework\Utility\Paginator;
  * @package mFramework
  * @author Wynn Chen
  */
-abstract class Record extends \mFramework\Map
+abstract class Record extends Map
 {
 
-	/**
-	 * #@+
-	 * 各种字段数据类型定义
-	 *
-	 * @var int
-	 */
 	const DATATYPE_NULL = 0;
-	// 实际上似乎用不上。
 	const DATATYPE_STRING = 1;
-
 	const DATATYPE_BOOL = 2;
-
 	const DATATYPE_INT = 3;
-
 	const DATATYPE_FLOAT = 4;
 	
-	const PARAM_BOOL = \PDO::PARAM_BOOL;
-	CONST PARAM_INT = \PDO::PARAM_INT;
-	CONST PARAM_FLOAT = \PDO::PARAM_STR;
-	CONST PARAM_NULL = \PDO::PARAM_NULL;
-	CONST PARAM_STR = \PDO::PARAM_STR;
-	CONST PARAM_STRING = \PDO::PARAM_STR;
-	CONST PARAM_LOB = \PDO::PARAM_LOB;
-	
-	/**
-	 * #@-
-	 */
-	
-	/**
-	 * #@+
-	 * 子类需要视情况设置此属性
-	 */
+	const PARAM_BOOL = PDO::PARAM_BOOL;
+	CONST PARAM_INT = PDO::PARAM_INT;
+	CONST PARAM_FLOAT = PDO::PARAM_STR;
+	CONST PARAM_NULL = PDO::PARAM_NULL;
+	CONST PARAM_STR = PDO::PARAM_STR;
+	CONST PARAM_STRING = PDO::PARAM_STR;
+	CONST PARAM_LOB = PDO::PARAM_LOB;
 	
 	/**
 	 * 支持读写分离，此时完整格式为:
@@ -75,78 +51,67 @@ abstract class Record extends \mFramework\Map
 	 * 写连接用于insert,update,delete等。
 	 *
 	 * 如果需要更精细的控制，可以自行实现con()方法
-	 *
-	 * @var string|array
 	 */
-	protected static $connection = 'default';
+	protected static array|string $connection = 'default';
 
 	/**
 	 * 表名
-	 *
-	 * @var string
 	 */
-	protected static $table = 'tablename';
+	protected static string $table = 'tablename';
 
 	/**
 	 * 数据表的字段信息。
 	 * 字段名=>字段类型， 类型为self::TYPE_*系列。
 	 * 以下所有涉及到字段信息的属性中都必须和本属性内的信息不冲突。
 	 *
-	 * @var array
 	 */
-	protected static $fields = ['id' => self::DATATYPE_INT];
+	protected static array $fields = ['id' => self::DATATYPE_INT];
 
 	/**
 	 * 各字段默认值信息
 	 * 字段名=>默认值。只需要指定有的字段即可。
 	 * 注意值和上面的类型定义不能冲突。
-	 *
-	 * @var array
 	 */
-	protected static $default = [];
+	protected static array $default = [];
 
 	/**
 	 * auto_inc字段名，如果有。
 	 * 这个字段会在insert语句执行之后调用 lastInsertId()更新。
-	 *
-	 * @var string|null
 	 */
-	protected static $auto_inc = null;
+	protected static ?string $auto_inc = null;
 
 	/**
 	 * 主键字段集合
 	 * 将作为update,delete等操作的默认WHERE信息.
 	 * 注意：即使和auto_inc字段一致，依然需要声明。
 	 *
-	 * @var array
 	 */
-	protected static $pk = [];
+	protected static array $pk = [];
 
 	/**
 	 * 所有需要在写入（update/insert）时忽略的字段，一般为数据库自动生成值的，例如timestamp类型。
 	 * auto_inc字段不用在这里重复声明。
-	 *
-	 * @var array
 	 */
-	protected static $ignore_on_write = [];
+	protected static array $ignore_on_write = [];
 
 	/**
 	 * 默认排序信息，和orderByStr()的参数格式需求一致
-	 *
-	 * @var array
 	 */
-	protected static $default_order_info = [];
+	protected static array $default_order_info = [];
 
 	/**
 	 * #@-
 	 */
-	
+
 	/**
 	 * 按照给定的模式名称返回对应需要的连接。
 	 * 函数的名字有意起的比较短，方便使用。
 	 *
-	 * @param string $mode			
-	 * @return \mFramework\Database\Connection
+	 * @param string|null $mode
+	 * @return Connection
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	protected static function con(string $mode = null): Connection
 	{
@@ -165,8 +130,11 @@ abstract class Record extends \mFramework\Map
 	 * 按照本class对应的目标数据库的要求将标识符括起来。
 	 * 使用读链接的配置。
 	 *
-	 * @param string $identifier			
+	 * @param string $identifier
 	 * @return string
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	protected static function enclose(string $identifier): string
 	{
@@ -177,8 +145,11 @@ abstract class Record extends \mFramework\Map
 	 * 取得表名。
 	 *
 	 * @param bool $enclose
-	 *			是否要执行enclose
+	 *            是否要执行enclose
 	 * @return string
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	public static function table(bool $enclose = true): string
 	{
@@ -231,38 +202,26 @@ abstract class Record extends \mFramework\Map
 	/**
 	 * 将值按照给定类型进行转换。保留null
 	 *
-	 * @param mixed $value
-	 *			需要转换的值
-	 * @param mixed $type
-	 *			值应当是 self::DATATYPE_* 系列。无相应定义的视为string
-	 * @return mixed 转换好的值
+	 * @param mixed $value 需要转换的值
+	 * @param int $type 值应当是 self::DATATYPE_* 系列。无相应定义的视为string
+	 * @return bool|int|float|string|null 转换好的值
 	 */
-	protected function typeCast($value, $type)
+	protected function typeCast(mixed $value, int $type): bool|int|float|string|null
 	{
 		if ($value === null) {
 			return null;
 		}
-		switch ($type) {
-			case self::DATATYPE_BOOL:
-				return (bool)$value;
-				break;
-			case self::DATATYPE_INT:
-				return (int)$value;
-				break;
-			case self::DATATYPE_FLOAT:
-				return (float)$value;
-				break;
-			case self::DATATYPE_NULL: // 这个基本是摆设
-				return null;
-				break;
-			default:
-				return (string)$value;
-				break;
-		}
+		return match ($type) {
+			self::DATATYPE_BOOL =>  (bool)$value,
+			self::DATATYPE_INT =>  (int)$value,
+			self::DATATYPE_FLOAT =>  (float)$value,
+			self::DATATYPE_NULL => null, //基本是摆设
+			default => (string)$value,
+		};
 	}
 
 	/**
-	 * 建立新的record。
+	 * 建立新的record 。
 	 *
 	 * 注意：在和PDO::FETCH_CLASS配合使用时不能使用PDO::FETCH_PROPS_LATE，
 	 * 也就是说如果是通过select得来的，在调用本方法之前实际上各个字段已经有内容了。
@@ -322,20 +281,23 @@ abstract class Record extends \mFramework\Map
 	/**
 	 * 以下为标准常用CRUD操作。涉及到sql的都不应该暴露给外部。 *
 	 */
-	
+
 	/**
 	 * 尝试根据sql来select对应的record，结果进入本类实例。
 	 * 如果指定了分页器，自动取分页器当前页对应的条目。
 	 *
 	 * @param string $sql
-	 *			查询用的SQL，应当是有返回结果集的。
-	 * @param array $param
-	 *			sql中对应的占位符所需要绑定的参数
-	 * @param Paginator $paginator
-	 *			分页器
+	 *            查询用的SQL，应当是有返回结果集的。
+	 * @param array|null $param
+	 *            sql中对应的占位符所需要绑定的参数
+	 * @param Paginator|null $paginator
+	 *            分页器
 	 * @return ResultSet
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
-	static protected function select(string $sql, array $param = null, Paginator $paginator = null)
+	static protected function select(string $sql, array $param = null, Paginator $paginator = null): ResultSet
 	{
 		return static::con('r')->selectObjects(get_called_class(), $sql, $param, $paginator);
 	}
@@ -411,11 +373,13 @@ abstract class Record extends \mFramework\Map
 	 * 调用方自行保证参数信息正确。
 	 *
 	 * @param array|mixed $value
-	 *			主键值。主键只有一个字段时可以直接写，否则用array。
-	 * @throws QueryException
+	 *            主键值。主键只有一个字段时可以直接写，否则用array。
 	 * @return Record|null
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
-	static public function SelectByPk($value)
+	static public function SelectByPk(mixed $value): ?Record
 	{
 		$pk = static::$pk;
 		if (!$pk) {
@@ -438,7 +402,14 @@ abstract class Record extends \mFramework\Map
 		$sql = 'SELECT * FROM ' . static::table() . ' WHERE ' . implode(' AND ', $where);
 		return static::select($sql, $params)->firstRow();
 	}
-	
+
+	/**
+	 * @param $value
+	 * @return int
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
+	 */
 	static public function deleteByPk($value)
 	{
 		$pk = static::$pk;
@@ -463,19 +434,20 @@ abstract class Record extends \mFramework\Map
 		return static::execute($sql, $params);
 		
 	}
-	
+
 	/**
 	 * 简单封装事务处理，从而无需手写try/catch和beginTransaction/commit/rollback等。
 	 * 有如下默认约定：
 	 * 1. con使用w模式。
 	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
 	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
-	 * 
-	 * @param unknown $fn
-	 * @param unknown ...$args
-	 * @throws TransactionException
+	 *
+	 * @param callback $fn
+	 * @param mixed ...$args
+	 * @return mixed
+	 * @throws ConnectionException
 	 */
-	static public function doTransaction($fn, ...$args)
+	static public function doTransaction(callable $fn, mixed ...$args):mixed
 	{
 		$con = static::con('w'); //事务通常有write需求，默认用w模式。
 		return $con->doTransaction($fn, ...$args);
@@ -486,9 +458,11 @@ abstract class Record extends \mFramework\Map
 	 * 返回值为数据库是否有“实际”更新，不等于成功与否。
 	 * 注意：如果指定的更新字段包含PK或ignore_on_write相关字段，要尤其小心，方法本身不会执行额外的检测。
 	 *
-	 * @param ...$fields 要更新那些字段？null则更新除PK外的全部，允许多个。			
+	 * @param string ...$fields 要更新那些字段？null则更新除PK外的全部，允许多个。
 	 * @return boolean 是否有更新
-	 * @throws QueryException
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	public function update(string ...$fields): bool
 	{
@@ -531,9 +505,11 @@ abstract class Record extends \mFramework\Map
 	 * 返回值为数据库是否有“实际”更新，不等于成功与否。
 	 * 除了指定排除字段，还会排除掉更新 pk 和 ignore on write 字段。
 	 *
-	 * @param ...$fields 不更新那些字段？允许多个，null则更新全部。			
+	 * @param string ...$fields 不更新那些字段？允许多个，null则更新全部。
 	 * @return boolean 是否有更新
-	 * @throws QueryException
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	public function updateWithout(string ...$fields): bool
 	{
@@ -546,7 +522,9 @@ abstract class Record extends \mFramework\Map
 	 * insert新记录，会自动忽略autoinc字段和 static::$ignore_on_write 指定字段。
 	 *
 	 * @return boolean 是否有更新
-	 * @throws QueryException
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	public function insert(): bool
 	{
@@ -577,8 +555,10 @@ abstract class Record extends \mFramework\Map
 	/**
 	 * delete之。依照pk来决定标准。
 	 *
-	 * @throws QueryException
 	 * @return boolean 是否有删除
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	public function delete(): bool
 	{
@@ -611,8 +591,11 @@ abstract class Record extends \mFramework\Map
 	 * 注意自行保证提供的内容正确，避免sql注入风险。
 	 * 调用方保证$info有内容。
 	 *
-	 * @param array $info			
+	 * @param array $info
 	 * @return string 拼装好的 order by 字符串，以" ORDER BY"开头（带空格）
+	 * @throws ConnectionException
+	 * @throws Connection\NameNotFoundException
+	 * @throws Connection\TypeMissException
 	 */
 	static protected function orderByStr(array $info): string
 	{

@@ -49,7 +49,7 @@ abstract class Action implements RequestHandlerInterface
 			return $result;
 		} else {
 			if ($this->isViewEnabled()) {
-				return $this->getView()->renderResponse();
+				return $this->getView()->renderResponse($this->data);
 			} else {
 				return new Response(status: 200, body: $result);
 			}
