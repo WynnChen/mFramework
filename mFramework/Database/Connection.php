@@ -102,7 +102,7 @@ abstract class Connection extends PDO
 			if(empty($config['type'])){
 				throw new ConnectionException('No type specified in config.');
 			}
-			$class = '\\mFramework\\Connection\\'.$config['type'];
+			$class = '\\mFramework\\Database\\Connection\\'.$config['type'];
 			if(!class_exists($class)){
 				throw new ConnectionException('This type is not implemented. [[ ' . $config['type'] . ' ]]');
 			}

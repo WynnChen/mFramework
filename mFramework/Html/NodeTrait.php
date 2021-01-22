@@ -9,15 +9,6 @@ namespace mFramework\Html;
  */
 trait NodeTrait
 {
-	/**
-	 * 允许可以用 ::create() 代替 new,方便点
-	 * @param mixed ...$args
-	 * @return static
-	 */
-	public static function create(...$args): static
-	{
-		return new static(...$args);
-	}
 
 	/**
 	 * 本节点对应的XML/HTML表示。
@@ -28,4 +19,53 @@ trait NodeTrait
 	{
 		return $this->ownerDocument->saveXML($this);
 	}
+
+	public function append(...$nodes): void
+	{
+		if(!$nodes){
+			return;
+		}
+
+		foreach ($nodes as $key => &$node) {
+			if(is_scalar($node)){
+				$node = (string)$node;
+			}
+			if($node === null){
+				unset($nodes[$key]);
+			}
+		}
+
+		parent::append(...$nodes);
+	}
+
+	public function prepend(...$nodes): void
+	{
+		if(!$nodes){
+			return;
+		}
+
+		foreach ($nodes as $key => &$node) {
+			if(is_scalar($node)){
+				$node = (string)$node;
+			}
+			if($node === null){
+				unset($nodes[$key]);
+			}
+		}
+
+		parent::prepend(...$nodes);
+	}
+
+	public function appendTo($node):static
+	{
+		$node->append($this);
+		return $this;
+	}
+
+	public function prependTo($node):static
+	{
+		$node->prepend($this);
+		return $this;
+	}
+
 }

@@ -80,7 +80,7 @@ abstract class Document extends DOMDocument implements View
 		$this->setContainer($this->body);
 
 		/** @var Element $title */
-		$title = $this->createElement('title', '');
+		$title = $this->createElement('title', '-');
 		$head->append($title);
 		$this->title = $title;
 	}
@@ -90,7 +90,11 @@ abstract class Document extends DOMDocument implements View
 	 */
 	protected function setTitle(string $text): void
 	{
-		$this->title->replaceWith($this->createElement('title', $text));
+		$t = $this->createElement('title', $text);
+		//$this->title->replaceWith($t) 工作不如预期，bug?
+		$this->title->before($t);
+		$this->title->remove();
+		$this->title = $t;
 	}
 
 	/**

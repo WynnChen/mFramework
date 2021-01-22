@@ -117,9 +117,9 @@ class Element extends \DOMElement implements \ArrayAccess
 	 * @param string ...$class			
 	 * @return Element $this
 	 */
-	public function addClass(string ...$class):static
+	public function addClass(?string ...$class):static
 	{
-		$classes = array_merge(explode(' ', $this->getAttribute('class')), $class);
+		$classes = array_merge(explode(' ', $this->getAttribute('class')), (array)$class);
 		$this->setAttribute('class', trim(implode(' ', $classes)));
 		return $this;
 	}

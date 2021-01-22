@@ -285,5 +285,6 @@ class Html
 		}
 		return $svg;
 	}
+
 }
 

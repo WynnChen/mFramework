@@ -17,7 +17,9 @@ class Html5Document extends Document
 	public function __construct($lang = 'zh-cn')
 	{
 		parent::__construct();
-		$this->head->insertBefore(Html::meta()->set('charset', 'utf-8'), $this->title);
+		$meta = $this->createElement('meta');
+		$meta->setAttribute('charset', 'utf-8');
+		$this->title->before($meta);
 		$this->documentElement->setAttribute('lang', $lang);
 	}
 
