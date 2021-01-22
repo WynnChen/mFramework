@@ -1,13 +1,10 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Database\Connection;
+
+use mFramework\Database\Connection;
+use PDO;
 
 /**
  * MySQL数据库配置需要包含如下内容:
@@ -21,24 +18,22 @@ namespace mFramework\Database\Connection;
  *
  * 注意：没有执行setAttribute(PDO::ATTR_EMULATE_PREPARES, false)，由外部程序自行决定。
  * 
- * @package mFramework
- * @author Wynn Chen
  */
-class Mysql extends \mFramework\Database\Connection
+class Mysql extends Connection
 {
 
 	public function __construct($config)
 	{
 		// 建立数据库连接
 		$options = $config['options'];
-		$options[\PDO::ATTR_ERRMODE] = \PDO::ERRMODE_EXCEPTION;
+		$options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
 		//比较新的系统上似乎已经不需要了？ $options[\PDO::MYSQL_ATTR_INIT_COMMAND] = "SET NAMES {$config['charset']}"; 
 		// charset需要PHP5.3.6及以上。
 		parent::__construct("mysql:host={$config['host']};port={$config['port']};dbname={$config['dbname']};charset={$config['charset']}", $config['username'], $config['password'], $options);
 		// $this->setAttribute(PDO::ATTR_EMULATE_PREPARES, false); 放到外部进行。
 	}
 
-	public function enclose($identifier)
+	public function enclose(string $identifier):string
 	{
 		return '`' . $identifier . '`';
 	}

@@ -1,12 +1,6 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Utility;
 
 /**
@@ -17,34 +11,27 @@ namespace mFramework\Utility;
  */
 class Paginator
 {
-
-	/**
-	 * #@+
-	 * 保存分页器需要的状态信息
-	 *
-	 * @var int
-	 */
 	/**
 	 * 每页多少项？
 	 */
-	protected $per_page = 1;
+	protected int $per_page = 1;
 
 	/**
 	 * 当前第几页？
 	 */
-	protected $current = 1;
+	protected int $current = 1;
 
 	/**
 	 * 一共多少项？
 	 */
-	protected $items = 0;
+	protected int $items = 0;
 
 	/**
 	 * 总页数
 	 *
 	 * 注意此项目是缓存结果性质，正确值依赖于总页数与每页项目数，不应当直接设定此值。
 	 */
-	protected $pages;
+	protected int $pages;
 
 	/**
 	 * #@-
@@ -53,14 +40,11 @@ class Paginator
 	/**
 	 * 初始化分页器
 	 *
-	 * @param int $items_per_page
-	 *			每页多少项？
-	 * @param int $current_page
-	 *			当前页，默认1
-	 * @param int $total_items
-	 *			总共有多少，默认0
+	 * @param int $items_per_page 每页多少项？
+	 * @param int $current_page 当前页，默认1
+	 * @param int $total_items 总共有多少，默认0
 	 */
-	public function __construct($items_per_page, $current_page = 1, $total_items = 0)
+	public function __construct(int $items_per_page, int $current_page = 1, int $total_items = 0)
 	{
 		$this->setItemsPerPage($items_per_page);
 		$this->setTotalItems($total_items);
@@ -71,11 +55,10 @@ class Paginator
 	 * 设置每一页项目数量
 	 * 无效的会被调整为最接近的有效项
 	 *
-	 * @param int $items
-	 *			每页多少项？
+	 * @param int $items 每页多少项？
 	 * @return self
 	 */
-	public function setItemsPerPage($items)
+	public function setItemsPerPage(int $items):static
 	{
 		$items = (int)$items;
 		if ($items < 1) {
@@ -92,10 +75,10 @@ class Paginator
 	 * 注意：页数设置过大超出最大页数不会引发异常。
 	 *
 	 * @see self::isCurrentPageValid()
-	 * @param int $current			
+	 * @param int $current
 	 * @return self
 	 */
-	public function setCurrentPage($current)
+	public function setCurrentPage(int $current):static
 	{
 		$current = (int)$current;
 		if ($current < 1) {
@@ -109,10 +92,10 @@ class Paginator
 	 * 设置总项目数量。
 	 * 无效的会被调整为最接近的有效项
 	 *
-	 * @param int $items			
+	 * @param int $items
 	 * @return self
 	 */
-	public function setTotalItems($items)
+	public function setTotalItems(int $items):static
 	{
 		$items = (int)$items;
 		if ($items < 0) {
@@ -128,7 +111,7 @@ class Paginator
 	 *
 	 * @return int
 	 */
-	public function getItemsPerPage()
+	public function getItemsPerPage():int
 	{
 		return $this->per_page;
 	}
@@ -138,7 +121,7 @@ class Paginator
 	 *
 	 * @return int
 	 */
-	public function getCurrentPage()
+	public function getCurrentPage():int
 	{
 		return $this->current;
 	}
@@ -148,7 +131,7 @@ class Paginator
 	 *
 	 * @return int
 	 */
-	public function getTotalItems()
+	public function getTotalItems():int
 	{
 		return $this->items;
 	}
@@ -158,7 +141,7 @@ class Paginator
 	 *
 	 * @return int
 	 */
-	public function getTotalPages()
+	public function getTotalPages():int
 	{
 		return $this->pages;
 	}
@@ -170,7 +153,7 @@ class Paginator
 	 * @see self::isCurrentPageValid()
 	 * @return boolean
 	 */
-	public function hasPrevPage()
+	public function hasPrevPage():bool
 	{
 		return $this->current > 1;
 	}
@@ -182,7 +165,7 @@ class Paginator
 	 * @see self::isCurrentPageValid()
 	 * @return boolean
 	 */
-	public function hasNextPage()
+	public function hasNextPage():bool
 	{
 		return $this->current < $this->pages;
 	}
@@ -192,7 +175,7 @@ class Paginator
 	 *
 	 * @return int|false 翻过之后的页数，如果无法翻为false
 	 */
-	public function prevPage()
+	public function prevPage():int|false
 	{
 		if ($this->hasPrevPage()) {
 			return --$this->current;
@@ -206,7 +189,7 @@ class Paginator
 	 *
 	 * @return int|false 翻过之后的页数，下一页不存在为false
 	 */
-	public function nextPage()
+	public function nextPage():int|false
 	{
 		if ($this->hasNextPage()) {
 			return ++$this->current;
@@ -215,7 +198,7 @@ class Paginator
 		}
 	}
 
-	public function valid()
+	public function valid():bool
 	{
 		return ($this->current >= 1 and $this->current <= $this->pages);
 	}
@@ -225,10 +208,10 @@ class Paginator
 	 *
 	 * 本方法供其它方法在适当的时机调用，以保持内部状态一致性。
 	 */
-	protected function update()
+	protected function update():void
 	{
 		if ($this->items) {
-			$this->pages = ceil($this->items / $this->per_page);
+			$this->pages = (int)ceil($this->items / $this->per_page);
 		} else {
 			$this->pages = 1;
 		}

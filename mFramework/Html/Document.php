@@ -1,87 +1,50 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   5.0
- * @copyright 2020 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Html;
 
+use DOMDocument;
+use DOMNode;
 use \mFramework\Html;
+use mFramework\Http\InvalidArgumentException;
 use mFramework\Http\Response;
 use mFramework\Map;
+use mFramework\View;
 
-/**
- *
- * document
- *
- * @package mFramework
- * @author Wynn Chen
- *		
- */
-abstract class Document extends \DOMDocument implements \mFramework\View
+abstract class Document extends DOMDocument implements View
 {
-
-	private static $current = null;
+	private static ?self $current = null;
 
 	/**
-	 *
-	 * @return Html_Document
+	 * @return Document
+	 * @throws Exception
 	 */
-	final public static function getCurrent()
+	final public static function getCurrent():self
 	{
 		if (self::$current === null) {
-			throw new Document\NoCurrentDocumentException('No current document.');
+			throw new Exception('No current document.');
 		}
 		return self::$current;
 	}
 
-	final static public function clearCurrent()
-	{
-		self::$current = null;
-	}
+	private Element $container;
+	protected Element $head;
+	protected Element $body;
+	protected Element $title;
 
-	private $container;
+	private ?Element $robots = null;
 
-	/**
-	 *
-	 * @var Element
-	 */
-	protected $head;
+	private array $js = [];
 
-	/**
-	 *
-	 * @var Element
-	 */
-	protected $body;
+	private array $js_code = [];
+
+	private array $css = [];
 
 	/**
-	 *
-	 * @var Element
+	 * Document constructor.
+	 * @throws Exception
 	 */
-	protected $title;
-
-	private $robots = null;
-
-	private $js = null;
-
-	private $js_code = null;
-
-	private $css = null;
-
-	private $ie_css = null;
-
-	/**
-	 * 调用renderResponse()时设置，
-	 * 在preRender(), render(), postRender()时可以用。
-	 *
-	 * @var Response
-	 */
-	protected $response;
-
-	public function __construct($lang = 'zh-CN')
+	public function __construct()
 	{
 		parent::__construct('1.0', 'utf-8');
 		
@@ -93,65 +56,87 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		$this->registerNodeClass('DOMText', '\mFramework\Html\Text');
 		
 		$this->recover = true;
-		
+
 		/*
 		 * doctype似乎会影响输出时的格式，
 		 * 例如是<br/>还是<br />，以及<div/>是否会自动展开为<div></div>
 		 * 因此在这里不直接用loadXML来读取基本模板，以保证输出的一致性
 		 */
-		
 		$this->encoding = 'utf-8';
-		$this->appendChild($this->createElement('html'));
+
+		/** @var Element $html_el */
+		$html_el = $this->createElement('html');
+		$this->appendChild($html_el);//这时候还没有container，不能append()
+		$this->setContainer($html_el);
+
+		/** @var Element $head */
+		$head = $this->createElement('head');
+		/** @var Element $body */
+		$body = $this->createElement('body');
+		$html_el->append($head, $body);
+		$this->head = $head;
+		$this->body = $body;
 		
-		$this->head = $this->documentElement->appendChild($this->createElement('head'));
-		$this->body = $this->documentElement->appendChild($this->createElement('body'));
 		$this->setContainer($this->body);
-		
-		$this->title = $this->createElement('title');
-		$this->title->Append('');
-		$this->title->appendTo($this->head);
-	}
-	
-	protected function setTitle($text)
-	{
-		$title = $this->createElement('title');
-		$title->replace($this->title);
-		$title->appendChild($this->createTextNode($text)); //某些特殊字符可能会引发问题，需要用textnode包一下。
+
+		/** @var Element $title */
+		$title = $this->createElement('title', '');
+		$head->append($title);
 		$this->title = $title;
-		return $this;
 	}
 
-	protected function getTitle()
+	/**
+	 * @param string $text
+	 */
+	protected function setTitle(string $text): void
 	{
-		return $this->title->textContent;
+		$this->title->replaceWith($this->createElement('title', $text));
 	}
 
-	protected function setContainer(\DOMNode $node)
+	/**
+	 * @param Element $node
+	 * @throws Exception
+	 */
+	protected function setContainer(Element $node)
 	{
+		if($node->ownerDocument !== $this){
+			throw new Exception('Container element must belong to this document.');
+		}
 		$this->container = $node;
 	}
-	protected function getContainer()
+
+	protected function getContainer():Element
 	{
 		return $this->container;
 	}
 
+	/**
+	 * 实际上是针对container节点操作。
+	 * @param mixed ...$children
+	 */
 	public function prepend(...$children):void
 	{
 		$this->container->prepend(...$children);
 	}
 
+	/**
+	 * 实际上是针对container节点操作。
+	 * @param mixed ...$children
+	 */
 	public function append(...$children):void
 	{
 		$this->container->append(...$children);
 	}
 
-	protected function getHeader()
+	/**
+	 * @return string[]
+	 * @noinspection PhpArrayShapeAttributeCanBeAddedInspection
+	 */
+	protected function getResponseHeader():array
 	{
 		return array('Content-type' => 'text/html; charset=utf-8');
 	}
 
-	/**
-	 */
 	final public function setAsCurrent()
 	{
 		self::$current = $this;
@@ -160,47 +145,36 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 	/**
 	 * 注意这里取得的是没有dtd的，从<html>开始。
 	 */
-	protected function getBody()
+	protected function getResponseBody()
 	{
 		// css
-		if ($this->css) {
-			foreach ($this->css as $file => $media) {
-				$this->head->appendChild(Html::link()->type('text/css')
-					->rel('stylesheet')
-					->href($file)
-					->media($media));
-			}
+		foreach ($this->css as $file => $media) {
+			$this->head->appendChild(Html::link()->type('text/css')
+				->rel('stylesheet')
+				->href($file)
+				->media($media));
 		}
-		if ($this->ie_css) {
-			foreach ($this->ie_css as $file => $info) {
-				$this->head->appendChild(Html::IeConditionalComment($info[0], Html::link()->type('text/css')
-					->rel('stylesheet')
-					->href($file)
-					->media($info[1])));
-			}
-		}
+
 		// js
-		if ($this->js) {
-			foreach ($this->js as $file => $in_head) {
-				$script = Html::script('')->set('type', 'text/javascript')->set('src', $file);
+		foreach ($this->js as $file => $in_head) {
+			$script = Html::script('')->set('type', 'text/javascript')->set('src', $file);
+			if ($in_head) {
+				$this->head->appendChild($script);
+			} else {
+				$this->body->appendChild($script);
+			}
+		}
+
+		foreach ($this->js_code as $in_head => $code_list) {
+			foreach ($code_list as $code) {
 				if ($in_head) {
-					$this->head->appendChild($script);
+					$this->head->appendChild($code);
 				} else {
-					$this->body->appendChild($script);
+					$this->body->appendChild($code);
 				}
 			}
 		}
-		if ($this->js_code) {
-			foreach ($this->js_code as $in_head => $code_list) {
-				foreach ($code_list as $code) {
-					if ($in_head) {
-						$this->head->appendChild($code);
-					} else {
-						$this->body->appendChild($code);
-					}
-				}
-			}
-		}
+
 		// workaround.
 		$html = $this->saveXML();
 		$html = explode("\n", $html, 2)[1];
@@ -209,21 +183,14 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 		return $html;
 	}
 
-	public function useCss($href, $media = null, $ie_condition = null)
+	public function useCss($href, $media = null)
 	{
-		if ($ie_condition) {
-			if ($ie_condition === true) {
-				$ie_condition = 'IE';
-			}
-			$this->ie_css[$href] = array($ie_condition,$media);
-		} else {
-			$this->css[$href] = $media;
-		}
+		$this->css[$href] = $media;
 	}
 
 	public function useJavascript($src, $in_head = false)
 	{
-		if ($src instanceof \DOMNode) {
+		if ($src instanceof DOMNode) {
 			$this->js_code[(int)$in_head][] = $src;
 		} else {
 			$this->js[$src] = $in_head;
@@ -238,7 +205,7 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 			$node->replace($this->robots);
 		} else {
 			$this->robots = $node;
-			$this->title->beforeMe($node);
+			$this->title->before($node);
 		}
 	}
 
@@ -255,20 +222,13 @@ abstract class Document extends \DOMDocument implements \mFramework\View
 	 * 渲染response页面
 	 * @param Map|null $data
 	 * @return Response
-	 * @throws \mFramework\Http\InvalidArgumentException
+	 * @throws InvalidArgumentException
 	 */
 	public function renderResponse(?Map $data=null):Response
 	{
 		$this->preRender($data);
 		$this->render($data);
 		$this->postRender($data);
-		return new Response(headers: $this->getHeader(), body:$this->getBody());
+		return new Response(headers: $this->getResponseHeader(), body:$this->getResponseBody());
 	}
 }
-namespace mFramework\Html\Document;
-
-class Exception extends \mFramework\Html\Exception
-{}
-
-class NoCurrentDocumentException extends Exception
-{}

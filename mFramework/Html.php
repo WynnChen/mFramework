@@ -4,9 +4,8 @@ declare(strict_types=1);
 namespace mFramework;
 
 use mFramework\Html\Document;
-use mFramework\Html\Element\Input;
-use mFramework\Html\Element\Select;
-use mFramework\Html\Element\InputSpan;
+use mFramework\Html\Element;
+use mFramework\Html\Fragment;
 
 /**
  *
@@ -23,23 +22,101 @@ use mFramework\Html\Element\InputSpan;
  * 注意，调用 Html::tagname() 返回的元素输出时得到的字符串不是固定的，取决于所在的document的doctype。
  * 例如 Html::br()，标准xml文档将得到<br/>，doctype为html的将得到<br />；Html::div()，标准xml得到<div/>，html得到<div></div>
  *
+ * @method static html(...$contents):Element
+ * metadata:
+ * @method static head(...$contents):Element
+ * @method static base():Element
+ * @method static link():Element
+ * @method static meta():Element
+ * @method static style(...$contents):Element
+ * @method static title(...$contents):Element
+ * content root
+ * @method static body(...$contents):Element
+ * content sectioning
+ * @method static address(...$contents):Element
+ * @method static article(...$contents):Element
+ * @method static aside(...$content):Element
+ * @method static footer(...$contents):Element
+ * @method static header(...$contents):Element
+ * @method static h1(...$contents):Element
+ * @method static h2(...$contents):Element
+ * @method static h3(...$contents):Element
+ * @method static h4(...$contents):Element
+ * @method static h5(...$contents):Element
+ * @method static h6(...$contents):Element
+ * @method static hgroup(...$contents):Element
+ * @method static main(...$contents):Element
+ * @method static nav(...$contents):Element
+ * @method static section(...$contents):Element
+ * text content
+ * @method static blockquote(...$contents):Element
+ * @method static dd(...$contents):Element
+ * @method static div(...$contents):Element
+ * @method static dl(...$contents):Element
+ * @method static dt(...$contents):Element
+ * @method static figcaption(...$contents):Element
+ * @method static figure(...$contents):Element
+ * @method static hr():Element
+ * @method static ol(...$contents):Element
+ * @method static p(...$contents):Element
+ * @method static pre(...$contents):Element
+ * @method static ul(...$contents):Element
+ * inline text semantics
+ * @method static abbr(...$contents):Element
+ * @method static b(...$contents):Element
+ * @method static bdi(...$contents):Element
+ * @method static bdo(...$contents):Element
+ * @method static br():Element
+ * @method static cite(...$contents):Element
+ * @method static code(...$contents):Element
+ * @method static data(...$contents):Element
+ * @method static dfn(...$contents):Element
+ * @method static em(...$contents):Element
+ * @method static i(...$contents):Element
+ * @method static kbd(...$contents):Element
+ * @method static mark(...$contents):Element
+ * @method static q(...$contents):Element
+ * @method static rb(...$contents):Element
+ * @method static rp(...$contents):Element
+ * @method static rt(...$contents):Element
+ * @method static rtc(...$contents):Element
+ * @method static ruby(...$contents):Element
+ * @method static s(...$contents):Element
+ * @method static samp(...$contents):Element
+ * @method static small(...$contents):Element
+ * @method static span(...$contents):Element
+ * @method static strong(...$contents):Element
+ * @method static sub(...$contents):Element
+ * @method static time(...$contents):Element
+ * @method static u(...$contents):Element
+ * @method static var(...$contents):Element
+ * @method static wbr(...$contents):Element
+ * image and multimedia
+ * @method static area(...$contents):Element
+ * @method static audio(...$contents):Element
+ * @method static map(...$contents):Element
+ * @method static track(...$contents):Element
+ * @method static video(...$contents):Element
+ * embedded content
  *
- * @package mFramework
- * @author Wynn Chen
- *		
+ *
  */
 class Html
 {
 
-	public static function __callStatic($name, $args = null)
+	/**
+	 * @param string $name
+	 * @param array|null $args
+	 * @return Element
+	 * @throws Html\Exception
+	 */
+	public static function __callStatic(string $name, ?array $args = null):Element
 	{
-		try {
-			$doc = Html\Document::getCurrent();
-		} catch (Html\Document\NoCurrentDocumentException $e) {
-			throw new Html\Exception('need a document first.');
-		}
+		$doc = Document::getCurrent();
 		$node = $doc->createElement($name); // 不直接传递arg进去。
-		$args and $node->append(...$args);
+		if($args){
+			$node->append(...$args);
+		}
 		return $node;
 	}
 
@@ -170,9 +247,11 @@ class Html
 
 	/**
 	 *
+	 * @param mixed ...$content
 	 * @return Html\Fragment
+	 * @throws Html\Exception
 	 */
-	public static function fragment(...$content)
+	public static function fragment(...$content):Fragment
 	{
 		$frag = Document::getCurrent()->createDocumentFragment();
 		$frag->append(...$content);
@@ -181,7 +260,7 @@ class Html
 
 	/**
 	 *
-	 * @param string $text			
+	 * @param string $text
 	 * @return Html\Fragment
 	 */
 	public static function formatText($text)

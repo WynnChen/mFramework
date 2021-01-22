@@ -1,13 +1,9 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Database\Connection;
+
+use mFramework\Database\Connection;
 
 /**
  * Sqlite数据库配置要求：
@@ -18,7 +14,7 @@ namespace mFramework\Database\Connection;
  * @package mFramework
  * @author Wynn Chen
  */
-class Sqlite extends \mFramework\Database\Connection
+class Sqlite extends Connection
 {
 
 	public function __construct($config)
@@ -32,7 +28,7 @@ class Sqlite extends \mFramework\Database\Connection
 	 * {@inheritDoc}
 	 * @see \mFramework\Database\Connection::enclose()
 	 */
-	public function enclose($identifier)
+	public function enclose(string $identifier):string
 	{
 		return '"' . $identifier . '"';
 	}

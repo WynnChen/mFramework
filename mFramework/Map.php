@@ -106,7 +106,7 @@ class Map extends ArrayObject
 	 * @param mixed $key
 	 * @return void
 	 */
-	public function del(string $key): void
+	public function delete(string $key): void
 	{
 		$this->offsetUnset($key);
 	}

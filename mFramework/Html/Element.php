@@ -1,49 +1,38 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * Require PHP 7 since v4.0
- *
- * @package   mFramework
- * @version   4.0
- * @copyright 2009 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Html;
 
+use DOMAttr;
+
 /**
- *
  * element
- *
- * @package mFramework
- * @author Wynn Chen
- *		
  */
 class Element extends \DOMElement implements \ArrayAccess
 {
 	use NodeTrait;
 
 	/**
-	 * 建立新的element，一般不直接调用，而通过Html::tag() 的模式来解决。
-	 * 本方法的实现主要为了使得本类可以正常继承，帮助某些widget实现扩展。
+	 * 建立新的 element，一般不直接调用，而通过 Html::tag() 的模式来解决。
+	 * 本方法的实现主要为了使得本类可以正常继承，帮助某些 widget 实现扩展。
 	 *
-	 * @param string $tag			
+	 * @param string $tag
+	 * @param Element|Fragment|Text|string|int|float ...$children
+	 * @throws Exception
 	 */
-	public function __construct($tag, ...$children)
+	public function __construct(string $tag, Element|Fragment|Text|string|int|float ...$children)
 	{
 		try {
 			$doc = Document::getCurrent();
-		} catch (Document\NoCurrentDocumentException $e) {
-			throw new Document\NoCurrentDocumentException('create a Document before create any Element.');
+		} catch (Exception $e) {
+			throw new Exception('create a Document before create any Element.');
 		}
 		
 		parent::__construct($tag);
-		
-		// 直接new出来的element不能修改，下面两行将其与document关联起来，变为可修改：
+		// 直接new出来的element不能修改
 		$doc->append($this);
 		$this->parentNode->removeChild($this);
 		// ok，可写了.
-		
 		$this->append(...$children);
 	}
 
@@ -53,18 +42,17 @@ class Element extends \DOMElement implements \ArrayAccess
 	 * $node->attr(null); //彻底remove掉attr属性。
 	 * $var = $node->attr(); //获取当前的attr属性值。
 	 *
-	 * @param string $name			
-	 * @param array $args			
+	 * @param string $name
+	 * @param array|null $args
 	 *
-	 * @return string|Element
+	 * @return string|static
 	 */
-	public function __call($name, $args)
+	public function __call(string $name, ?array $args): static|string
 	{
 		// 没有参数。 $var = $node->attr()的用法。
 		if (!$args) {
 			return $this->getAttribute($name);
 		}
-		
 		// 有参数
 		if ($args[0] === null) {
 			$this->removeAttribute($name);
@@ -74,60 +62,51 @@ class Element extends \DOMElement implements \ArrayAccess
 		return $this;
 	}
 
-	/**
-	 * set arrtibute
-	 *
-	 * @param string $attribute			
-	 * @param string $value			
-	 */
-	public function set($attribute, $value)
+	public function get(string $attribute): string
+	{
+		return $this->getAttribute($attribute);
+	}
+
+	public function set(string $attribute, string|int|float $value):static
 	{
 		$this->setAttribute($attribute, $value);
 		return $this;
 	}
 
-	public function del($attribute)
+	public function delete(string $attribute):static
 	{
 		$this->removeAttribute($attribute);
 		return $this;
 	}
 
-	/**
-	 * get attribute
-	 */
-	public function get($attribute)
+	public function offsetExists(mixed $offset):bool
 	{
-		return $this->getAttribute($attribute);
+		return (bool)$this->getAttribute($offset);
 	}
 
-	public function offsetExists($attribute)
+	public function offsetGet(mixed $offset)
 	{
-		return (bool)$this->getAttribute($attribute);
+		return $this->getAttribute($offset);
 	}
 
-	public function offsetGet($attribute)
+	public function offsetSet(mixed $offset, $value):void
 	{
-		return $this->getAttribute($attribute);
+		$this->setAttribute($offset, $value);
 	}
 
-	public function offsetSet($attribute, $value)
+	public function offsetUnset($offset)
 	{
-		$this->setAttribute($attribute, $value);
-	}
-
-	public function offsetUnset($attribute)
-	{
-		$this->removeAttribute($attribute);
+		$this->removeAttribute($offset);
 	}
 
 	/**
 	 *
-	 * 元素具有class $class?
+	 * 元素具有 class $class?
 	 *
-	 * @param string $class			
+	 * @param string $class
 	 * @return bool
 	 */
-	public function hasClass($class)
+	public function hasClass(string $class):bool
 	{
 		return in_array($class, explode(' ', $this->getAttribute('class')));
 	}
@@ -138,10 +117,10 @@ class Element extends \DOMElement implements \ArrayAccess
 	 * @param string ...$class			
 	 * @return Element $this
 	 */
-	public function addClass(...$class)
+	public function addClass(string ...$class):static
 	{
-		$classes = array_unique(array_merge(explode(' ', $this->getAttribute('class')), $class));
-		$this->class(trim(implode(' ', $classes)));
+		$classes = array_merge(explode(' ', $this->getAttribute('class')), $class);
+		$this->setAttribute('class', trim(implode(' ', $classes)));
 		return $this;
 	}
 
@@ -151,7 +130,7 @@ class Element extends \DOMElement implements \ArrayAccess
 	 * @param string $class			
 	 * @return Element $this
 	 */
-	public function removeClass(...$class)
+	public function removeClass(string ...$class):static
 	{
 		$classes = array_diff(explode(' ', $this->getAttribute('class')), $class);
 		$this->class(trim(implode(' ', $classes))); // 如果弄完变成没有了。

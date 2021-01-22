@@ -1,13 +1,10 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * @package   mFramework
- * @version   v5
- * @copyright 2009-2016 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework\Database;
+
+use IteratorIterator;
+use PDOStatement;
 
 /**
  * 数据库查询结果集
@@ -19,39 +16,31 @@ namespace mFramework\Database;
  *
  * 由于继承并扩展 PDOStatement 类的方案不能用于持久化的PDO连接实例，因此采用外包覆的方式。
  *
- * @package mFramework
- * @author Wynn Chen
  */
-class ResultSet extends \IteratorIterator
+class ResultSet extends IteratorIterator
 {
 
 	/**
 	 * 结果集中是否有内容？
-	 *
-	 * @var boolean
 	 */
-	protected $has;
+	protected bool $has;
 
 	/**
 	 * 结果集的第一行。
-	 *
-	 * @var mixed
 	 */
-	protected $first;
+	protected mixed $first;
 
 	/**
 	 * 对应的PDOStatement
-	 *
-	 * @var \PDOStatement
-	 */
-	protected $stmt;
+ 	*/
+	protected PDOStatement $stmt;
 
 	/**
 	 * 建立数据结果集迭代器
 	 *
 	 * @param PDOStatement $stmt
 	 */
-	public function __construct(\PDOStatement $stmt)
+	public function __construct(PDOStatement $stmt)
 	{
 		parent::__construct($stmt);
 		$this->stmt = $stmt;
@@ -65,17 +54,18 @@ class ResultSet extends \IteratorIterator
 	 *
 	 * @return boolean
 	 */
-	public function hasRows()
+	public function hasRows():bool
 	{
 		return $this->has;
 	}
 
 	/**
 	 * 返回第一行。没有为null
+	 * 如果db模块整体使用，返回一般为 record
 	 *
-	 * @return mixed
+	 * @return Record|null
 	 */
-	public function firstRow()
+	public function firstRow(): Record|null
 	{
 		return $this->first;
 	}
@@ -95,14 +85,11 @@ class ResultSet extends \IteratorIterator
 	 * $value_callback 用法与 $key_callback 类似，应用于数组的值。
 	 * callback格式为 function($row, $offset, $key){}，$key参数为之前所生成的key值，如果未指定$key_callback，为null。
 	 *
-	 * @param $key_callback string|callable
-	 *			如何确定数组的key
-	 * @param $value_callback string|callable
-	 *			如何确定数组的value
+	 * @param callable|string|null $key_callback string|callable 如何确定数组的key
+	 * @param callable|string|null $value_callback string|callable 如何确定数组的value
 	 * @return array 结果数组
-	 *		
 	 */
-	public function getArray($key_callback = null, $value_callback = null)
+	public function getArray(callable|string|null $key_callback = null, callable|string|null $value_callback = null): array
 	{
 		// 不能直接用$this->stmt->fetchAll()，会丢掉第一行。
 		$array = [];
@@ -111,7 +98,7 @@ class ResultSet extends \IteratorIterator
 			if ($key_callback === null) {
 				$key = null;
 			} elseif (is_callable($key_callback)) {
-				//不要 $key_callback($row, $offser)，call_user_func接受的格式更多。
+				//不要 $key_callback($row, $offset)，call_user_func接受的格式更多。
 				$key = call_user_func($key_callback, $row, $offset); 
 			} else {
 				$key = $row->$key_callback;

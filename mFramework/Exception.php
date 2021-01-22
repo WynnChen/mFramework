@@ -1,11 +1,6 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- *
- * @package   mFramework
- * @copyright 2009-2020 Wynn Chen
- * @author	Wynn Chen <wynn.chen@outlook.com>
- */
+declare(strict_types=1);
+
 namespace mFramework;
 
 /**

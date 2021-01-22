@@ -1,10 +1,12 @@
 <?php
-
+declare(strict_types=1);
 
 namespace mFramework\ResponseEmitter;
 
+use mFramework\Http\InvalidArgumentException;
 use mFramework\Http\Response;
 
+use mFramework\Http\RuntimeException;
 use function connection_status;
 use function header;
 use function headers_sent;
@@ -33,6 +35,8 @@ class DefaultResponseEmitter implements ResponseEmitterInterface
 	 *
 	 * @param Response $response
 	 * @return void
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
 	 */
 	public function emit(Response $response): void
 	{
@@ -84,6 +88,8 @@ class DefaultResponseEmitter implements ResponseEmitterInterface
 	 * Emit Body
 	 *
 	 * @param Response $response
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
 	 */
 	private function emitBody(Response $response): void
 	{
@@ -124,6 +130,8 @@ class DefaultResponseEmitter implements ResponseEmitterInterface
 	 *
 	 * @param Response $response
 	 * @return bool
+	 * @throws InvalidArgumentException
+	 * @throws RuntimeException
 	 */
 	public function isResponseEmpty(Response $response): bool
 	{
