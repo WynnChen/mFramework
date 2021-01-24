@@ -188,7 +188,7 @@ abstract class Connection extends PDO
 	 */
 	public function select(string $sql, ?array $params = null, ?Paginator $paginator = null): ResultSet
 	{
-		return $this->selectObjects('\mFramework\Map', $sql, $params, $paginator);
+		return $this->selectObjects('\mFramework\Database\Row', $sql, $params, $paginator);
 	}
 
 	/**
@@ -198,9 +198,9 @@ abstract class Connection extends PDO
 	 *
 	 * @param string $sql
 	 * @param array|null $params
-	 * @return string
+	 * @return string|null
 	 */
-	public function SelectSingleValue(string $sql, ?array $params = null): string
+	public function SelectSingleValue(string $sql, ?array $params = null): string|null
 	{
 		try {
 			$stmt = $this->prepare($sql);

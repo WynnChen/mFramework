@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace mFramework\Html;
 
-use DOMAttr;
-
 /**
  * element
  */
@@ -67,9 +65,14 @@ class Element extends \DOMElement implements \ArrayAccess
 		return $this->getAttribute($attribute);
 	}
 
-	public function set(string $attribute, string|int|float $value):static
+	public function set(string $attribute, string|int|float|null $value):static
 	{
-		$this->setAttribute($attribute, $value);
+		if($value === null){
+			$this->removeAttribute($attribute);
+		}
+		else{
+			$this->setAttribute($attribute, $value);
+		}
 		return $this;
 	}
 

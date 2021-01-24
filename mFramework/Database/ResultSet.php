@@ -61,11 +61,10 @@ class ResultSet extends IteratorIterator
 
 	/**
 	 * 返回第一行。没有为null
-	 * 如果db模块整体使用，返回一般为 record
 	 *
-	 * @return Record|null
+	 * @return mixed
 	 */
-	public function firstRow(): Record|null
+	public function firstRow(): mixed
 	{
 		return $this->first;
 	}

@@ -98,7 +98,43 @@ use mFramework\Html\Fragment;
  * @method static track(...$contents):Element
  * @method static video(...$contents):Element
  * embedded content
- *
+ * @method static embed(...$contents):Element
+ * @method static iframe(...$contents):Element
+ * @method static object(...$contents):Element
+ * @method static param(...$contents):Element
+ * @method static picture(...$contents):Element
+ * @method static portal(...$contents):Element
+ * @method static source(...$contents):Element
+ * SVG and MathML
+ * @method static math(...$contents):Element
+ * Scripting
+ * @method static canvas(...$contents):Element
+ * @method static noscript(...$contents):Element
+ * @method static script(...$contents):Element
+ * Demarcating edits
+ * @method static del(...$contents):Element
+ * @method static ins(...$contents):Element
+ * Table content
+ * @method static caption(...$contents):Element
+ * @method static col(...$contents):Element
+ * @method static colgroup(...$contents):Element
+ * @method static table(...$contents):Element
+ * @method static tbody(...$contents):Element
+ * @method static td(...$contents):Element
+ * @method static tfoot(...$contents):Element
+ * @method static th(...$contents):Element
+ * @method static thead(...$contents):Element
+ * @method static tr(...$contents):Element
+ * Forms
+ * @method static datalist(...$contents):Element
+ * @method static fieldset(...$contents):Element
+ * @method static label(...$contents):Element
+ * @method static legend(...$contents):Element
+ * @method static meter(...$contents):Element
+ * @method static optgroup(...$contents):Element
+ * @method static option(...$contents):Element
+ * @method static output(...$contents):Element
+ * @method static progress(...$contents):Element
  *
  */
 class Html

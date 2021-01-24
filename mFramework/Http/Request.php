@@ -800,6 +800,11 @@ final class Request extends Message
 		return $this->serverParams;
 	}
 
+	public function getServerParam(string $name, mixed $default = null)
+	{
+		return $this->serverParams[$name] ?? $default;
+	}
+
 	/**
 	 * Retrieve normalized file upload data.
 	 *
@@ -832,6 +837,11 @@ final class Request extends Message
 		return $this->cookieParams;
 	}
 
+	public function getCookieParam(string $name, mixed $default = null)
+	{
+		return $this->cookieParams[$name] ?? $default;
+	}
+
 	/**
 	 * Retrieve query string arguments.
 	 *
@@ -847,6 +857,11 @@ final class Request extends Message
 	public function getQueryParams(): array
 	{
 		return $this->queryParams;
+	}
+
+	public function getQueryParam(string $name, mixed $default = null)
+	{
+		return $this->queryParams[$name] ?? $default;
 	}
 
 	/**
