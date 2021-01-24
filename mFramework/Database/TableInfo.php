@@ -149,7 +149,7 @@ class TableInfo
 				continue; //没有 "Field" attribute 的再见。
 			}
 			if(!$property->hasDefaultValue()){
-				throw new Exception('Field property "'.$property->getName().'" must have default value (can be null).');
+				throw new Exception('Field property "'.$class.'->'.$property->getName().'" must have default value (can be null).');
 			}
 			$info = $attributes[0]->getArguments();
 			//字段名

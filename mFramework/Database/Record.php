@@ -3,11 +3,12 @@ declare(strict_types=1);
 
 namespace mFramework\Database;
 
+use ArrayAccess;
 use mFramework\Database\Attribute\Field;
 use mFramework\Database\Attribute\Table;
-use mFramework\Map;
 use mFramework\Utility\Paginator;
 use PDO;
+use ReflectionException;
 
 /**
  * 对数据库单行记录的封装。
@@ -41,7 +42,7 @@ use PDO;
  * @see Field
  *
  */
-abstract class Record extends Map
+abstract class Record implements ArrayAccess
 {
 
 	const DATATYPE_NULL = 0;
@@ -63,7 +64,7 @@ abstract class Record extends Map
 	 *
 	 *
 	 * @return bool
-	 * @throws \ReflectionException
+	 * @throws ReflectionException
 	 */
 	final static public function setUp(): bool
 	{
@@ -188,7 +189,6 @@ abstract class Record extends Map
 	 */
 	public function __construct(bool $fetch = false)
 	{
-		parent::__construct();
 		if($fetch){
 			//查询得到的结果，需要后处理。
 			$this->afterRead();
@@ -557,5 +557,23 @@ abstract class Record extends Map
 	 */
 	protected function afterRead()
 	{
+	}
+
+	public function offsetExists($offset): bool
+	{
+		return property_exists($this, $offset);
+	}
+
+	public function offsetGet($offset): mixed
+	{
+		return $this->{$offset};
+	}
+
+	public function offsetSet($offset, $value){
+		$this->{$offset} = $value;
+	}
+
+	public function offsetUnset($offset){
+		unset($this->{$offset});
 	}
 }
