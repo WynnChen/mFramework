@@ -111,7 +111,7 @@ abstract class Connection extends PDO
 				throw new ConnectionException('Class ' . $class . ' must inherit from Database\\Connection.');
 			}
 		} catch (PDOException $e) {
-			throw new ConnectionException('Error on init connection.' . $e->getMessage(), null, $e);
+			throw new ConnectionException('Error on init connection.' . $e->getMessage(), 1, $e);
 		}
 		//强制设置适用 exception 方式
 		$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -130,26 +130,24 @@ abstract class Connection extends PDO
 	/**
 	 * select，结果进入特定类的对象实例。
 	 *
-	 * 不使用 PDO::FETCH_PROPS_LATE 值会被直接强行设置为属性，绕过了ArrayAccess的内容。
-	 * 而使用 PDO::FETCH_PROPS_LATE 就无法在__construct()中进行读取后的格式化之类的后处理。
-	 * 自行选择
+	 * 不使用 PDO::FETCH_PROPS_LATE，因此在目标类中， __construct() 时各个字段已经是有内容的。
+	 * 如果是本方法select得到， __construct()会收到 'fetch' => true 的参数，方便做区别处理。
 	 *
 	 * $params 的元素内容可以是 $value，或者 [$value, $type]
 	 * 如果使用 "?" 占位符，$params 的 key 会被忽略，按照foreach的顺序进行参数绑定。
 	 *
-	 * @param string $className 目标类名
+	 * @param string $className 目标类名，必须继承自 Record
 	 * @param string $sql SQL语句，应当为有返回数据集的，并使用绑定占位符。
 	 * @param array|null $params SQL语句对应的待绑定参数，具体格式与使用的绑定占位符格式有关
 	 * @param Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
-	 * @param array|null $construct_args 目标类构造器参数，如果需要的话
-	 * @param bool $fetch_props_late 是否使用PDO::FETCH_PROPS_LATE
+	 * @param array|null $construct_args 目标类的额外构造器参数。必然会有的一个参数是 ['fetch'=>true]
 	 * @return ResultSet
 	 */
-	public function selectObjects(string $className, string $sql, ?array $params = null, ?Paginator $paginator = null, ?array $construct_args = null, $fetch_props_late = false): ResultSet
+	public function selectObjects(string $className, string $sql, ?array $params = null, ?Paginator $paginator = null, ?array $construct_args = null): ResultSet
 	{
 		try {
 			$params = $params ?? [];
-			$named = is_string(array_key_first($params)); //i使用 :name 还是 ?
+			$named = is_string(array_key_first($params)); //使用 :name 还是 ?
 			if ($paginator) {
 				$sql .= $named ? ' LIMIT :mfLimitStart, :mfLimitCount' : ' LIMIT ?, ?';
 				$params[$named?':mfLimitStart':null] = [($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage(), self::PARAM_INT];
@@ -171,8 +169,8 @@ abstract class Connection extends PDO
 				}
 			}
 			$stmt->execute();
-			$mode = self::FETCH_CLASS;
-			$fetch_props_late and $mode |= self::FETCH_PROPS_LATE;
+			$mode = self::FETCH_CLASS | self::FETCH_PROPS_LATE;
+			$construct_args['fetch'] = true;
 			$stmt->setFetchMode($mode, $className, $construct_args);
 			return new ResultSet($stmt);
 		} catch (PDOException $e) {

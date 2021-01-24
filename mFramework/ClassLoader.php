@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace mFramework;
 
+use mFramework\Database\TableInfo;
+
 /**
  * mFramework - ClassLoader
  *
@@ -128,22 +130,25 @@ class ClassLoader
 
 		return $this;
 	}
-	
+
 	/**
 	 * 按照给定类名加载对应的类文件。
 	 * 类名为解析好的限定名称，前面再加上一个 \ 就是对应的完全限定名称。
 	 * 由于这是autoload，不判定是否类已经加载。手工调用本方法时自行注意不要重复加载。
 	 *
-	 * @param string $class	需要加载的类名。
+	 * 除了负责加载类文件之外，还会做某些特定初始化操作，例如 database model 的初始化.
+	 *
+	 * @param string $class 需要加载的类名。
+	 * @throws \ReflectionException
 	 */
 	public function loadClass(string $class)
 	{
 		// 直接显式指定映射的有吗？
 		if (isset($this->map[$class])) {
 			$this->includeFile($this->map[$class]);
-			return;
+			goto after;
 		}
-		
+
 		// 从后往前逐段测试namespace前缀，检查是否有指定了相应的处理函数
 		$prefix = $class;
 		while (($pos = strrpos($prefix, '\\')) !== false) {
@@ -153,7 +158,7 @@ class ClassLoader
 				foreach($this->prefixes[$prefix] as $handle){
 					if($file = $handle($relative_class, $prefix)){
 						$this->includeFile($file);
-						return;
+						goto after;
 					}
 				}
 			}
@@ -163,10 +168,17 @@ class ClassLoader
 			foreach($this->prefixes[''] as $handle){
 				if($file = $handle($class, '')){
 					$this->includeFile($file);
-					return;
+					goto after;
 				}
 			}
 		}
+		return; //没有命中，再见了。
+
+		after: //命中，后处理：
+		if(is_subclass_of($class, '\\mFramework\\Database\\Record')){
+			TableInfo::register($class);
+		}
+
 	}
 
 	/**
