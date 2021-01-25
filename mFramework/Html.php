@@ -61,6 +61,7 @@ use mFramework\Html\Fragment;
  * @method static p(...$contents):Element
  * @method static pre(...$contents):Element
  * @method static ul(...$contents):Element
+ * @method static li(...$contents):Element
  * inline text semantics
  * @method static abbr(...$contents):Element
  * @method static b(...$contents):Element
