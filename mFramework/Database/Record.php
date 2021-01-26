@@ -205,7 +205,7 @@ abstract class Record implements ArrayAccess
 	 * @return ResultSet
 	 * @throws ConnectionException
 	 */
-	static protected function select(string $sql,
+	static public function select(string $sql,
 									 ?array $param = null,
 									 ?Paginator $paginator = null): ResultSet
 	{
