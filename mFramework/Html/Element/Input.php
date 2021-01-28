@@ -1,14 +1,4 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * Require PHP 7 since v4.0
- *
- * @package   mFramework
- * @version   4.1
- * @copyright 2009 - 2016 Wynn Chen
- * @author    Wynn Chen <wynn.chen@outlook.com>
- */
 namespace mFramework\Html\Element;
 
 use \mFramework\Html;
@@ -22,11 +12,12 @@ use \mFramework\Html;
  */
 class Input extends \mFramework\Html\Element
 {
-	public function __construct($name, $type = null)
+	public function __construct($name, $type = null, $value = null)
 	{
 		parent::__construct('input');
 		$this->setAttribute('name', $name);
 		$type and $this->setAttribute('type', $type);
+		$value and $this->setAttribute('value', $value);
 	}
 	
 	/**

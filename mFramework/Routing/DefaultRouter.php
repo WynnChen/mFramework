@@ -60,7 +60,7 @@ class  DefaultRouter implements RouterInterface
 		if($action == '.'){
 			$action = '';
 		}
-		return $request->withAttribute('action', $action)->withAttribute('params', $params);
+		return $request->withAttribute('action', $action)->withCustomParams($params);
 	}
 
 }

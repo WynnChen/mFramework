@@ -25,10 +25,12 @@ class Element extends \DOMElement implements \ArrayAccess
 		} catch (Exception $e) {
 			throw new Exception('create a Document before create any Element.');
 		}
-		
+
+		$node = $doc->createElement($tag);
+
 		parent::__construct($tag);
 		// 直接new出来的element不能修改
-		$doc->append($this);
+		$doc->appendChild($this); //这里不能用append()，必须appendChild()
 		$this->parentNode->removeChild($this);
 		// ok，可写了.
 		$this->append(...$children);

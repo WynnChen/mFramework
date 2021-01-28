@@ -5,6 +5,8 @@ namespace mFramework;
 
 use mFramework\Html\Document;
 use mFramework\Html\Element;
+use mFramework\Html\Element\Input;
+use mFramework\Html\Element\Select;
 use mFramework\Html\Fragment;
 
 /**
@@ -180,9 +182,6 @@ class Html
 
 	public static function form($action, ...$content)
 	{
-		if (!$content) {
-			$content = [null];
-		}
 		return self::__callStatic('form', $content)->set('action', $action)->set('method', 'post');
 	}
 
@@ -203,9 +202,9 @@ class Html
 			->set('value', $max_size);
 	}
 
-	public static function input($name, $type = 'text')
+	public static function input($name, $type = 'text', $value = null)
 	{
-		return new Input($name, $type);
+		return new Input($name, $type, $value);
 	}
 
 	public static function select($name, ...$content)
@@ -215,9 +214,6 @@ class Html
 
 	public static function button(...$content)
 	{
-		if (!$content) {
-			$content = [null];
-		}
 		return self::__callStatic('button', $content)->set('type', 'submit');
 	}
 

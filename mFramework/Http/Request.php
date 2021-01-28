@@ -25,7 +25,7 @@ use function trim;
 use const UPLOAD_ERR_OK;
 
 /**
- *  * Representation of an incoming, server-side HTTP request.
+ * 参考 PSR-7 的 request 方案。
  *
  * Per the HTTP specification, this interface includes properties for
  * each of the following:
@@ -165,17 +165,13 @@ final class Request extends Message
 		$post = null;
 		if ('POST' === self::getMethodFromEnv($server)) {
 			foreach ($headers as $headerName => $headerValue) {
-				if ('content-type' !== strtolower($headerName)) {
+				if (strtolower($headerName) !== 'content-type') {
 					continue;
 				}
-				if (in_array(
-					strtolower(trim(explode(';', $headerValue, 2)[0])),
-					['application/x-www-form-urlencoded', 'multipart/form-data']
-				)) {
-					$post = $_POST;
-
-					break;
-				}
+				$post = match (strtolower(trim(explode(';', $headerValue, 2)[0]))){
+					'application/x-www-form-urlencoded' , 'multipart/form-data' => $_POST,
+					default => null,
+				};
 			}
 		}
 
@@ -246,7 +242,13 @@ final class Request extends Message
 	 * @return Request
 	 * @throws InvalidArgumentException
 	 */
-	public static function fromArrays(array $server, array $headers = [], array $cookie = [], array $get = [], ?array $post = null, array $files = [], $body = null): Request
+	public static function fromArrays(array $server,
+									  array $headers = [],
+									  array $cookie = [],
+									  array $get = [],
+									  ?array $post = null,
+									  array $files = [],
+									  $body = null): Request
 	{
 		$method = self::getMethodFromEnv($server);
 		$uri = self::getUriFromEnvWithHTTP($server);
@@ -415,10 +417,6 @@ final class Request extends Message
 	 */
 	public function withParsedBody(object|array|null $data): self
 	{
-		if (!is_array($data) && !is_object($data) && null !== $data) {
-			throw new InvalidArgumentException('First parameter to withParsedBody MUST be object, array or null');
-		}
-
 		$new = clone $this;
 		$new->parsedBody = $data;
 
@@ -451,6 +449,14 @@ final class Request extends Message
 	{
 		$new = clone $this;
 		$new->queryParams = $query;
+
+		return $new;
+	}
+
+	public function withCustomParams(array $params): self
+	{
+		$new = clone $this;
+		$new->customParams = $params;
 
 		return $new;
 	}
@@ -882,6 +888,30 @@ final class Request extends Message
 	public function getParsedBody(): object|array|null
 	{
 		return $this->parsedBody;
+	}
+
+	public function getPostParams(): array
+	{
+		return $this->method === 'POST' ? $this->parsedBody : [];
+	}
+
+	public function getPostParam(string $name, mixed $default = null)
+	{
+		if($this->method === 'POST'){
+			return $this->parsedBody[$name] ?? $default;
+		}else{
+			return $default;
+		}
+	}
+
+	public function getCustomParams(): array
+	{
+		return $this->customParams;
+	}
+
+	public function getCustomParam(string $name = '', mixed $default = null)
+	{
+		return $this->customParams[$name] ?? $default;
 	}
 
 	/**
