@@ -90,7 +90,9 @@ abstract class Document extends DOMDocument implements View
 	 */
 	protected function setTitle(string $text): void
 	{
-		$t = $this->createElement('title', $text);
+		/** @var Element $t */
+		$t = $this->createElement('title');
+		$t->append($text);
 		//$this->title->replaceWith($t) 工作不如预期，bug?
 		$this->title->before($t);
 		$this->title->remove();
