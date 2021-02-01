@@ -175,7 +175,8 @@ abstract class Action implements RequestHandlerInterface
 		return $this;
 	}
 
-	protected function getData(): Map
+
+	public function getData(): Map
 	{
 		return $this->data;
 	}
