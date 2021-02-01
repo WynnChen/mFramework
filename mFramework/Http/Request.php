@@ -12,7 +12,6 @@ use function function_exists;
 use function in_array;
 use function is_array;
 use function is_int;
-use function is_object;
 use function is_resource;
 use function is_string;
 use function is_string as is_stringAlias;
@@ -104,7 +103,6 @@ final class Request extends Message
 								private array $customParams = [],
 	)
 	{
-
 		if (!($uri instanceof Uri)) {
 			$uri = new Uri($uri);
 		}
@@ -1001,6 +999,16 @@ final class Request extends Message
 		unset($new->attributes[$attribute]);
 
 		return $new;
+	}
+
+	public function isGet():bool
+	{
+		return $this->method === 'GET';
+	}
+
+	public function isPost():bool
+	{
+		return $this->method === 'POST';
 	}
 
 }
