@@ -34,8 +34,9 @@ trait NodeTrait
 				unset($nodes[$key]);
 			}
 		}
-
-		parent::append(...$nodes);
+		if($nodes){ //要求至少一个参数。
+			parent::append(...$nodes);
+		}
 	}
 
 	public function prepend(...$nodes): void
