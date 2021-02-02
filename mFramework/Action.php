@@ -50,7 +50,7 @@ abstract class Action implements RequestHandlerInterface
 	 * @param Request $request
 	 * @return mixed
 	 */
-	protected function execute(Request $request):mixed
+	protected function execute(Request $request)
 	{
 		//根据 $request 的 method 来决定跑什么
 		return match ($request->getMethod()) {
