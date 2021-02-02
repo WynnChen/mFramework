@@ -215,13 +215,13 @@ abstract class Document extends DOMDocument implements View
 		}
 	}
 
-	protected function preRender(?Map $data=null)
+	protected function preRender(Map $data)
 	{}
 
-	protected function postRender(?Map $data=null)
+	protected function postRender(Map $data)
 	{}
 
-	protected function render(?Map $data=null)
+	protected function render(Map $data)
 	{}
 
 	/**

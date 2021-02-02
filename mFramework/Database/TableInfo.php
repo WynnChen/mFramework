@@ -112,7 +112,7 @@ class TableInfo
 		if(!empty(self::$tables[$class])){
 			return false;
 		}
-		self::$tables[$class] = $info ?? self::setUp($class);
+		self::$tables[$class] = self::setUp($class);
 		return true;
 	}
 
@@ -128,14 +128,24 @@ class TableInfo
 
 		//class attributes 分析,表相关属性
 		$reflection = new ReflectionClass($class);
-		$attributes = $reflection->getAttributes(Table::class);
-		if($attributes){
-			$table_info = $attributes[0]->getArguments();
-			$table_info_obj->connection = $table_info['connection'] ?? $table_info[0] ?? 'default';
-			$table_info_obj->table = $table_info['name'] ?? $table_info[1] ?? '';
-			if(isset($table_info['orderBy'])){
-				$table_info_obj->default_order_by = $table_info['orderBy'] ?? $table_info[2];
+		do{
+			$attributes = $reflection->getAttributes(Table::class);
+			if(!$attributes){
+				//没有表信息，可能是继承的，找父类：
+				$reflection = $reflection->getParentClass();
+				if($info = self::getInfo($reflection->getName())){ //分析过了.
+					return $info;
+				}
+				if(!$reflection){//没有父类了
+					throw new Exception('类 "'.$class.' 没有配置数据库表信息。');
+				}
 			}
+		}while(!$attributes);
+		$table_info = $attributes[0]->getArguments();
+		$table_info_obj->connection = $table_info['connection'] ?? $table_info[0] ?? 'default';
+		$table_info_obj->table = $table_info['name'] ?? $table_info[1] ?? '';
+		if(isset($table_info['orderBy'])){
+			$table_info_obj->default_order_by = $table_info['orderBy'] ?? $table_info[2];
 		}
 
 		// properties attributes 分析，字段属性
@@ -149,7 +159,7 @@ class TableInfo
 				continue; //没有 "Field" attribute 的再见。
 			}
 			if(!$property->hasDefaultValue()){
-				throw new Exception('Field property "'.$class.'->'.$property->getName().'" must have default value (can be null).');
+				throw new Exception('字段属性 "'.$class.'->'.$property->getName().'" 必须有默认值（可以是null）。');
 			}
 			$info = $attributes[0]->getArguments();
 			//字段名
@@ -168,11 +178,6 @@ class TableInfo
 				$type = Record::DATATYPE_STRING;
 			}
 			$table_info_obj->fields_type[$name] = $type; //写入字段定义数组。
-//			//默认值信息，如果有
-//			$default = $property->getDefaultValue();
-//			if ($default !== null){
-//				$table_info_obj->default_values[$name] = $default;
-//			}
 
 			$flags = $info['flags'] ?? $info[0] ?? 0;
 			if($flags & Field::IS_PK){

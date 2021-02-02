@@ -170,7 +170,7 @@ abstract class Record implements ArrayAccess
 		if (is_string($connection)) {
 			return Connection::get($connection);
 		}
-		// 到此 static::$connection 应该是个array
+		// 到此 $connection 应该是个array
 		$mode = $mode ?: 'w';
 		if (isset($connection[$mode])) {
 			return Connection::get($connection);
