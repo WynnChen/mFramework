@@ -21,7 +21,7 @@ abstract class Action implements RequestHandlerInterface
 
 	private Map $data;
 
-	public function __construct()
+	public function __construct(private ?ActionPluginInterface $plugin = null)
 	{
 		$this->data = new Map();
 	}
@@ -38,22 +38,28 @@ abstract class Action implements RequestHandlerInterface
 	 */
 	public function handle(Request $request): Response
 	{
+		$this->plugin and $this->plugin->startHandle($this, $request);
 		//根据 $request 的 method 来决定跑什么
 		$result = match ($request->getMethod()) {
 			'GET' => $this->runGet($request),
 			'POST' => $this->runPost($request),
 			default => $this->run($request),
 		};
+		$this->plugin and $this->plugin->afterRun($this->getData(), $result);
 
 		if ($result instanceof Response) {
-			return $result;
+			$response = $result;
 		} else {
 			if ($this->isViewEnabled()) {
-				return $this->getView()->renderResponse($this->data);
+				$view = $this->getView();
+				$response = $view->renderResponse($this->data);
+				$this->plugin and $this->plugin->afterRender($view, $response);
 			} else {
-				return new Response(status: 200, body: $result);
+				$response = new Response(status: 200, body: $result);
 			}
 		}
+		$this->plugin and $this->plugin->endHandle($response);
+		return $response;
 	}
 
 	/**
@@ -142,7 +148,7 @@ abstract class Action implements RequestHandlerInterface
 		return $this;
 	}
 
-	#[Pure] protected function getDefaultView(): string
+	protected function getDefaultView(): string
 	{
 		return substr_replace($this::class, 'View', -6);
 	}
@@ -176,7 +182,7 @@ abstract class Action implements RequestHandlerInterface
 	}
 
 
-	public function getData(): Map
+	protected function getData(): Map
 	{
 		return $this->data;
 	}

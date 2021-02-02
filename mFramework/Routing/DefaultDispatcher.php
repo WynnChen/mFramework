@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace mFramework\Routing;
 
-use mFramework\Application;
+use mFramework\ActionPluginInterface;
 use mFramework\Http\Request;
 use mFramework\Http\Response;
 use mFramework\RequestHandlerInterface;
@@ -36,9 +36,11 @@ class DefaultDispatcher implements DispatcherInterface
 	/**
 	 * @param string $default_action action为空时使用的默认的action名
 	 * @param RouterInterface|null $router
+	 * @param ActionPluginInterface|null $action_plugin
 	 */
 	public function __construct(private string $default_action = 'indexAction',
-								private ?RouterInterface $router = null)
+								private ?RouterInterface $router = null,
+								private ?ActionPluginInterface $action_plugin = null)
 	{
 		if($this->router === null){
 			$this->router = new DefaultRouter();
@@ -73,7 +75,7 @@ class DefaultDispatcher implements DispatcherInterface
 			throw new DispatchException('dispatch 失败，'.$action.' 对应的 '.$action_class.' 未找到。');
 		}
 		/** @var RequestHandlerInterface $obj */
-		$obj = new $action_class();
+		$obj = new $action_class($this->action_plugin);
 		if(!$obj instanceof RequestHandlerInterface){
 			throw new DispatchException('action 类 '.$action_class.' 必须实现 \mFramework\RequestHandlerInterface 接口');
 		}
