@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace mFramework\Database\Attribute;
 
 use Attribute;
-use mFramework\Database\Record;
 
 /**
  * Class Field

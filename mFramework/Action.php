@@ -36,30 +36,50 @@ abstract class Action implements RequestHandlerInterface
 	 * @throws ActionException
 	 * @throws Http\InvalidArgumentException
 	 */
-	public function handle(Request $request): Response
+	final public function handle(Request $request): Response
 	{
 		$this->plugin and $this->plugin->startHandle($this, $request);
+		$result = $this->execute($request);
+		$this->plugin and $this->plugin->afterRun($this->getData(), $result);
+		$response = $this->render($result);
+		$this->plugin and $this->plugin->endHandle($response);
+		return $response;
+	}
+
+	/**
+	 * 子类可以默认运行模式。
+	 * @param Request $request
+	 */
+	protected function execute(Request $request)
+	{
 		//根据 $request 的 method 来决定跑什么
-		$result = match ($request->getMethod()) {
+		return match ($request->getMethod()) {
 			'GET' => $this->runGet($request),
 			'POST' => $this->runPost($request),
 			default => $this->run($request),
 		};
-		$this->plugin and $this->plugin->afterRun($this->getData(), $result);
+	}
 
+	/**
+	 * @param mixed $result
+	 * @return Response
+	 * @throws ActionException
+	 * @throws Http\InvalidArgumentException
+	 */
+	final protected function render(mixed $result): Response
+	{
 		if ($result instanceof Response) {
-			$response = $result;
-		} else {
-			if ($this->isViewEnabled()) {
-				$view = $this->getView();
-				$response = $view->renderResponse($this->data);
-				$this->plugin and $this->plugin->afterRender($view, $response);
-			} else {
-				$response = new Response(status: 200, body: $result);
-			}
+			return $result;
 		}
-		$this->plugin and $this->plugin->endHandle($response);
-		return $response;
+
+		if ($this->isViewEnabled()) {
+			$view = $this->getView();
+			$response = $view->renderResponse($this->data);
+			$this->plugin and $this->plugin->afterRender($view, $response);
+			return $response;
+		}
+
+		return new Response(status: 200, body: $result);
 	}
 
 	/**
@@ -100,7 +120,7 @@ abstract class Action implements RequestHandlerInterface
 		return $this->run($request);
 	}
 
-	protected function isViewEnabled(): bool
+	final protected function isViewEnabled(): bool
 	{
 		return $this->enable_view;
 	}
@@ -109,7 +129,7 @@ abstract class Action implements RequestHandlerInterface
 	 * @return View
 	 * @throws ActionException
 	 */
-	protected function getView(): View
+	final protected function getView(): View
 	{
 		$view = $this->view;
 
@@ -141,7 +161,7 @@ abstract class Action implements RequestHandlerInterface
 	 * @param string|View $view
 	 * @return Action
 	 */
-	protected function setView(string|View $view): self
+	final protected function setView(string|View $view): self
 	{
 		$this->view = $view;
 		$this->enable_view = true;
@@ -153,12 +173,12 @@ abstract class Action implements RequestHandlerInterface
 		return substr_replace($this::class, 'View', -6);
 	}
 
-	protected function disableView(): void
+	final protected function disableView(): void
 	{
 		$this->enable_view = false;
 	}
 
-	protected function enableView(): void
+	final protected function enableView(): void
 	{
 		$this->enable_view = true;
 	}
@@ -169,7 +189,7 @@ abstract class Action implements RequestHandlerInterface
 	 * @param mixed $value
 	 * @return Action
 	 */
-	protected function assign(string|iterable $name, mixed $value = null): self
+	final protected function assign(string|iterable $name, mixed $value = null): self
 	{
 		if (is_iterable($name)) {
 			foreach ($name as $k => $v) {
@@ -181,9 +201,9 @@ abstract class Action implements RequestHandlerInterface
 		return $this;
 	}
 
-
-	protected function getData(): Map
+	final protected function getData(): Map
 	{
 		return $this->data;
 	}
+
 }
