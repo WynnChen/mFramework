@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace mFramework;
 
-use JetBrains\PhpStorm\Pure;
 use mFramework\Http\Request;
 use mFramework\Http\Response;
 
@@ -47,10 +46,11 @@ abstract class Action implements RequestHandlerInterface
 	}
 
 	/**
-	 * 子类可以默认运行模式。
+	 * 子类默认运行模式。
 	 * @param Request $request
+	 * @return mixed
 	 */
-	protected function execute(Request $request)
+	protected function execute(Request $request):mixed
 	{
 		//根据 $request 的 method 来决定跑什么
 		return match ($request->getMethod()) {
