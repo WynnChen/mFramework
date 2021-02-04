@@ -14,7 +14,7 @@ use mFramework\Http\Response;
 Interface ActionPluginInterface
 {
 	public function startHandle(Action $action, Request $request):void;
-	public function afterRun(Map $data, mixed $result):void;
+	public function afterExecute(Map $data, mixed $result):void;
 	public function afterRender(View $view, Response $response):void;
 	public function endHandle(Response $response):void;
 }

@@ -39,7 +39,7 @@ abstract class Action implements RequestHandlerInterface
 	{
 		$this->plugin and $this->plugin->startHandle($this, $request);
 		$result = $this->execute($request);
-		$this->plugin and $this->plugin->afterRun($this->getData(), $result);
+		$this->plugin and $this->plugin->afterExecute($this->getData(), $result);
 		$response = $this->render($result);
 		$this->plugin and $this->plugin->endHandle($response);
 		return $response;

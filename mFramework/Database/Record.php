@@ -499,10 +499,10 @@ abstract class Record implements ArrayAccess
 	 * 注意：如果有传入参数，则本方法实际更新的字段完全依据参数传递，不考虑 auto inc 和 readonly 属性。
 	 *
 	 * @param string ...$fields 要更新那些字段？默认为非。
-	 * @return boolean 是否有更新
+	 * @return int|false 更新行数，或者结果false
 	 * @throws ConnectionException
 	 */
-	public function update(string ...$fields): bool
+	public function update(string ...$fields): int|false
 	{
 		$info = self::getTableInfo();
 		if(!$fields){
