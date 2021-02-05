@@ -122,7 +122,7 @@ class TableInfo
 	 * @return self
 	 * @throws ReflectionException
 	 */
-	private static function setUp($class): self
+	private static function setUp($class): ?self
 	{
 		$table_info_obj = new self();
 
@@ -133,11 +133,11 @@ class TableInfo
 			if(!$attributes){
 				//没有表信息，可能是继承的，找父类：
 				$reflection = $reflection->getParentClass();
+				if(!$reflection){//没有父类了
+					return $table_info_obj; //不能抛出异常，因为某些类装备用于继承的，不要求配置。
+				}
 				if($info = self::getInfo($reflection->getName())){ //分析过了.
 					return $info;
-				}
-				if(!$reflection){//没有父类了
-					throw new Exception('类 "'.$class.' 没有配置数据库表信息。');
 				}
 			}
 		}while(!$attributes);
