@@ -7,7 +7,7 @@
 * @copyright 2009-2016 Wynn Chen
 * @author	Wynn Chen <wynn.chen@outlook.com>
 */
-namespace mFramework\Widget;
+namespace mFramework\Html\Widget;
 
 use mFramework\Html;
 
