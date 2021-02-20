@@ -146,9 +146,8 @@ class ClassLoader
 		// 直接显式指定映射的有吗？
 		if (isset($this->map[$class])) {
 			$this->includeFile($this->map[$class]);
-			goto after;
+			return;
 		}
-
 		// 从后往前逐段测试namespace前缀，检查是否有指定了相应的处理函数
 		$prefix = $class;
 		while (($pos = strrpos($prefix, '\\')) !== false) {
@@ -158,7 +157,7 @@ class ClassLoader
 				foreach($this->prefixes[$prefix] as $handle){
 					if($file = $handle($relative_class, $prefix)){
 						$this->includeFile($file);
-						goto after;
+						return;
 					}
 				}
 			}
@@ -168,17 +167,10 @@ class ClassLoader
 			foreach($this->prefixes[''] as $handle){
 				if($file = $handle($class, '')){
 					$this->includeFile($file);
-					goto after;
+					return;
 				}
 			}
 		}
-		return; //没有命中，再见了。
-
-		after: //命中，后处理：
-		if(is_subclass_of($class, '\\mFramework\\Database\\Record')){
-			TableInfo::register($class);
-		}
-
 	}
 
 	/**

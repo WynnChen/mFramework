@@ -13,6 +13,36 @@ use Attribute;
  */
 #[Attribute(Attribute::TARGET_CLASS)]
 class Table {
-	public function __construct(array|string $connection, string $name, ?array $orderBy=null)
+	public function __construct(private array|string $connection,
+								private string $name,
+								private ?array $orderBy=null,)
 	{}
+
+	/**
+	 * @return array|string
+	 */
+	public function getConnection(): array|string
+	{
+		return $this->connection;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getName(): string
+	{
+		return $this->name;
+	}
+
+	/**
+	 * @return array|null
+	 */
+	public function getOrderBy(): ?array
+	{
+		return $this->orderBy;
+	}
+
+
 }
+
+

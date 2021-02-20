@@ -17,6 +17,22 @@ class Field {
 	const IS_READ_ONLY = 1 << 1;
 	CONST IS_AUTO_INC = 1 << 2;
 
-	public function __construct(int $flags = 0)
+	public function __construct(private int $flags = 0)
 	{}
+
+	public function isPk():bool
+	{
+		return (bool)($this->flags & Field::IS_PK);
+	}
+
+	public function isAutoInc():bool
+	{
+		return (bool)($this->flags & Field::IS_AUTO_INC);
+	}
+
+	public function isReadOnly():bool
+	{
+		return (bool)($this->flags & Field::IS_READ_ONLY);
+	}
+
 }

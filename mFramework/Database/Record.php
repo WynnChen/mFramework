@@ -8,7 +8,9 @@ use mFramework\Database\Attribute\Field;
 use mFramework\Database\Attribute\Table;
 use mFramework\Utility\Paginator;
 use PDO;
+use ReflectionClass;
 use ReflectionException;
+use ReflectionNamedType;
 
 /**
  * 对数据库单行记录的封装。
@@ -60,25 +62,99 @@ abstract class Record implements ArrayAccess
 	const PARAM_LOB = PDO::PARAM_LOB;
 
 	/**
+	 * @var array TableInfo[]
+	 */
+	static private array $tableInfo = [];
+
+	/**
 	 * 本类的子类必须通过 attributes 来配置数据库表相关信息。
 	 *
-	 *
-	 * @return bool
-	 * @throws ReflectionException
+	 * @return TableInfo|null
+	 * @throws Exception
 	 */
-	final static public function setUp(): bool
+	final static protected function setUp(): ?TableInfo
 	{
-		return TableInfo::register(static::class);
+		//class attributes 分析,表相关属性
+		$reflection = new ReflectionClass(static::class);
+		$attributes = $reflection->getAttributes(Table::class);
+		if(!$attributes){
+			//没有表信息，可能是继承的，找父类：
+			$reflection = $reflection->getParentClass();
+			if(!$reflection){//没有父类了
+				throw new Exception(static::class.' 缺乏数据库属性配置信息。');
+			}
+			return  $reflection->getName()::getTableInfo(); //用父类的信息
+		}
+		/** @var Table $table_obj */
+		$table_obj = $attributes[0]->newInstance(); //携带着表的几个属性
+
+		// properties attributes 分析，字段属性
+		$fields = [];
+		$fields_type = [];
+		$pk = [];
+		$auto_inc = null;
+		$ignore_on_write = [];
+		$properties = $reflection->getProperties();
+		foreach($properties as $property) {
+			if ($property->isStatic()) {
+				continue; //静态属性不需要管
+			}
+			$attributes = $property->getAttributes(Field::class);
+			if (!$attributes) {
+				continue; //没有 "Field" attribute 的再见。
+			}
+			if(!$property->hasDefaultValue()){
+				throw new Exception('字段属性 "'.static::class.'->'.$property->getName().'" 必须有默认值（可以是null）。');
+			}
+			/** @var Field $field */
+			$field = $attributes[0]->newInstance(); //携带flag信息
+			//字段名
+			$fields[] = $name = $property->getName(); //使用变量名
+			//字段类型定义
+			$type = $property->getType();
+			if ($type instanceof ReflectionNamedType) {
+				$type = match (strtolower($type->getName())) {
+					'int' => Record::DATATYPE_INT,
+					'float' => Record::DATATYPE_FLOAT,
+					'bool' => Record::DATATYPE_BOOL,
+					default => Record::DATATYPE_STRING, //其他统统按string处理。
+				};
+			} else { //没有类型信息或 union type也都按照string处理。
+				$type = Record::DATATYPE_STRING;
+			}
+			$fields_type[$name] = $type; //写入字段定义数组。
+			if($field->isPk()){
+				$pk[] = $name;
+			}
+			if($field->isAutoInc()){
+				$auto_inc = $name;
+				$ignore_on_write[] = $name; //auto inc 的也就不能写入。
+			}
+			if($field->isReadOnly()){
+				$ignore_on_write[] = $name;
+			}
+		}
+		return new TableInfo(
+			connection: $table_obj->getConnection(),
+			table: $table_obj->getName(),
+			fields_type: $fields_type,
+			pk: $pk,
+			ignore_on_write: $ignore_on_write,
+			default_order_by: $table_obj->getOrderBy(),
+			auto_inc:$auto_inc,
+			fields: $fields,
+		);
 	}
 
 	/**
 	 * 得到本类对应的配置信息。
 	 * 如果在 setUp()（或者是直接 TableInfo::register($class) ）之前调用是null
 	 * @return TableInfo|null 如果没有的对应信息为null 。
+	 * @throws Exception
 	 */
 	final static public function getTableInfo(): ?TableInfo
 	{
-		return TableInfo::getInfo(static::class);
+		return self::$tableInfo[static::class] ?? self::$tableInfo[static::class] = static::setUp();
 	}
 
 	/**
@@ -336,11 +412,11 @@ abstract class Record implements ArrayAccess
 	 * 注意自行保证提供的内容正确，避免sql注入风险。
 	 * 调用方保证$info有内容。
 	 *
-	 * @param array $info 字段名 => 正/逆 序。
+	 * @param array|null $info 字段名 => 正/逆 序。
 	 * @return string 拼装好的 order by 字符串，以" ORDER BY"开头（带空格）。或者 ''（$info为空数组时）
 	 * @throws ConnectionException
 	 */
-	static protected function orderByStr(array $info): string
+	static protected function orderByStr(?array $info): string
 	{
 		if(!$info){
 			return '';
