@@ -9,7 +9,6 @@ use mFramework\Database\Attribute\Table;
 use mFramework\Utility\Paginator;
 use PDO;
 use ReflectionClass;
-use ReflectionException;
 use ReflectionNamedType;
 
 /**
@@ -83,7 +82,7 @@ abstract class Record implements ArrayAccess
 			if(!$reflection){//没有父类了
 				throw new Exception(static::class.' 缺乏数据库属性配置信息。');
 			}
-			return  $reflection->getName()::getTableInfo(); //用父类的信息
+			return $reflection->getName()::getTableInfo(); //用父类的信息
 		}
 		/** @var Table $table_obj */
 		$table_obj = $attributes[0]->newInstance(); //携带着表的几个属性
@@ -163,6 +162,7 @@ abstract class Record implements ArrayAccess
 	 * @param bool $enclose 是否要执行enclose
 	 * @return string|null 如果是 null 表示table info还没有设置过
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	final static public function table(bool $enclose = true): string|null
 	{
@@ -184,6 +184,7 @@ abstract class Record implements ArrayAccess
 	 * @param bool $enclose 返回的字段名是否要enclose
 	 * @return string|null 结果
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	final static public function field(string $field, bool $full = false, bool $enclose = true): string|null
 	{
@@ -216,6 +217,7 @@ abstract class Record implements ArrayAccess
 			default => (string)$value,
 		};
 	}
+
 	/**
 	 * 按照本class对应的目标数据库的要求将标识符括起来。
 	 * 使用读链接的配置。
@@ -223,13 +225,13 @@ abstract class Record implements ArrayAccess
 	 * @param string $identifier
 	 * @return string
 	 * @throws ConnectionException
-	 * @throws ConnectionException
-	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	protected static function enclose(string $identifier): string
 	{
 		return static::con('r')->enclose($identifier);
 	}
+
 	/**
 	 * 按照给定的模式名称返回对应需要的连接。
 	 * 函数的名字有意起的比较短，方便使用。
@@ -237,8 +239,7 @@ abstract class Record implements ArrayAccess
 	 * @param string|null $mode
 	 * @return Connection
 	 * @throws ConnectionException
-	 * @throws ConnectionException
-	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	protected static function con(string $mode = null): Connection
 	{
@@ -275,11 +276,12 @@ abstract class Record implements ArrayAccess
 	 * 尝试根据sql来select对应的record，结果进入本类实例。
 	 * 如果指定了分页器，自动取分页器当前页对应的条目。
 	 *
-	 * @param string $sql  查询用的SQL，应当是有返回结果集的。
-	 * @param array|null $param  sql中对应的占位符所需要绑定的参数
-	 * @param Paginator|null $paginator  分页器
+	 * @param string $sql 查询用的SQL，应当是有返回结果集的。
+	 * @param array|null $param sql中对应的占位符所需要绑定的参数
+	 * @param Paginator|null $paginator 分页器
 	 * @return ResultSet
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function select(string $sql,
 									 ?array $param = null,
@@ -298,6 +300,7 @@ abstract class Record implements ArrayAccess
 	 * @param string|null $sql
 	 * @return ResultSet
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function selectAll(?Paginator $paginator = null,
 									 ?array $order_info = null,
@@ -317,6 +320,7 @@ abstract class Record implements ArrayAccess
 	 *
 	 * @return int
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function countAll(): int
 	{
@@ -332,6 +336,7 @@ abstract class Record implements ArrayAccess
 	 * @param array|null $param 参数，如果有。
 	 * @return string
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static protected function selectSingleValue(string $sql, ?array $param = null):string
 	{
@@ -347,6 +352,7 @@ abstract class Record implements ArrayAccess
 	 * @param mixed ...$values 主键值，按照定义顺序。
 	 * @return Record|null
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function selectByPk(mixed ...$values): static|null
 	{
@@ -361,6 +367,7 @@ abstract class Record implements ArrayAccess
 	 * @param mixed ...$values
 	 * @return int|false
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function deleteByPk(mixed ...$values): int|false
 	{
@@ -378,6 +385,7 @@ abstract class Record implements ArrayAccess
 	 * @param array|null $param
 	 * @return int|false
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static protected function execute(string $sql, ?array $param = null):int|false
 	{
@@ -395,6 +403,7 @@ abstract class Record implements ArrayAccess
 	 * @param mixed ...$args
 	 * @return mixed
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static public function doTransaction(callable $fn, mixed ...$args): mixed
 	{
@@ -415,6 +424,7 @@ abstract class Record implements ArrayAccess
 	 * @param array|null $info 字段名 => 正/逆 序。
 	 * @return string 拼装好的 order by 字符串，以" ORDER BY"开头（带空格）。或者 ''（$info为空数组时）
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	static protected function orderByStr(?array $info): string
 	{
@@ -440,6 +450,7 @@ abstract class Record implements ArrayAccess
 	 *
 	 * @return boolean 是否有更新
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	public function insert(): bool
 	{
@@ -449,6 +460,8 @@ abstract class Record implements ArrayAccess
 			throw new QueryException('Insert need at least one col.');
 		}
 		$this->beforeWrite();
+
+		var_dump($this);
 
 		$cols = [];
 		$values = [];
@@ -472,6 +485,7 @@ abstract class Record implements ArrayAccess
 	 *
 	 * @return boolean 是否有删除
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	public function delete(): bool
 	{
@@ -497,6 +511,7 @@ abstract class Record implements ArrayAccess
 	 * @param array $values 对应于pk数组的 values，可能混合着 named 和 unnamed
 	 * @return array [$where, $params]
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	private static function buildPkConstraint(array $values): array
 	{
@@ -527,6 +542,7 @@ abstract class Record implements ArrayAccess
 	 * 字段 => 值 数组。
 	 *
 	 * @return array
+	 * @throws Exception
 	 */
 	public function getPkValues(): array
 	{
@@ -543,6 +559,7 @@ abstract class Record implements ArrayAccess
 	 * 可以直接用getArrayCopy()
 	 *
 	 * @return array
+	 * @throws Exception
 	 */
 	public function getValuesArray(): array
 	{
@@ -561,6 +578,7 @@ abstract class Record implements ArrayAccess
 	 * @param string ...$fields 不更新那些字段？允许多个，null 为默认值。
 	 * @return boolean 是否有更新
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	public function updateWithout(string ...$fields): bool
 	{
@@ -577,6 +595,7 @@ abstract class Record implements ArrayAccess
 	 * @param string ...$fields 要更新那些字段？默认为非。
 	 * @return int|false 更新行数，或者结果false
 	 * @throws ConnectionException
+	 * @throws Exception
 	 */
 	public function update(string ...$fields): int|false
 	{

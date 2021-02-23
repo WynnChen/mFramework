@@ -6,11 +6,6 @@ use mFramework\Html\Element;
 
 class RadioGroup extends Element
 {
-	public function __construct()
-	{
-		parent::__construct('span');
-	}
-	
 	/**
 	 *
 	 * @param string $name
@@ -21,17 +16,16 @@ class RadioGroup extends Element
 	 *			初始选中值，可以为null
 	 * @return Html\Element
 	 */
-	public static function create($name, $info, $required = false, $value = null)
+	public function __construct($name, $info, $required = false, $value = null)
 	{
-		$box = new self();
-		$box->set('class', 'radio_group');
+		parent::__construct('span');
+		$this->set('class', 'radio_group');
 		foreach ($info as $key => $display) {
 			$radio = InputSpan::create('radio', $name, $key, $display)->checked((($value !== null) and ((string)$key == (string)$value)));
 			if ($required) {
 				$radio->input->required('raquired');
 			}
-			$box->append($radio);
+			$this->append($radio);
 		}
-		return $box;
 	}
 }

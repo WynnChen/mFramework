@@ -11,6 +11,17 @@ class Element extends \DOMElement implements \ArrayAccess
 	use NodeTrait;
 
 	/**
+	 * 允许用 Class::create($a, ...) 替代  new Class($a, ...)
+	 * @param mixed ...$args
+	 * @return static
+	 * @throws Exception
+	 */
+	static public function create(...$args):static
+	{
+		return new static(...$args);
+	}
+
+	/**
 	 * 建立新的 element，一般不直接调用，而通过 Html::tag() 的模式来解决。
 	 * 本方法的实现主要为了使得本类可以正常继承，帮助某些 widget 实现扩展。
 	 *
@@ -141,4 +152,17 @@ class Element extends \DOMElement implements \ArrayAccess
 		$this->class(trim(implode(' ', $classes))); // 如果弄完变成没有了。
 		return $this;
 	}
+
+	/**
+	 * 清除所有子元素
+	 * @return $this
+	 */
+	public function clear():static
+	{
+		while ($this->firstElementChild){
+			$this->firstElementChild->remove();
+		}
+		return $this;
+	}
+
 }

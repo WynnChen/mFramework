@@ -26,28 +26,21 @@ class InputSpan extends Element
 	public $input;
 	public $label;
 	
-	public function __construct()
+	public function __construct($type, $name, $value, $label, $id = null)
 	{
 		parent::__construct('span');
-	}
-	
-	public static function create($type, $name, $value, $label, $id = null)
-	{
-		$span = new self();
 		if (!$id) {
 			$id = $name . '_' . mt_rand(0, 99) . uniqid();
 		}
-		$span->addClass($type);
-		$span->input = Html::input($name, $type)->id($id)->value($value)->appendTo($span);
-		$span->label = Html::label($label)->for($id)->addClass('follow')->appendTo($span);
-		return $span;
+		$this->addClass($type);
+		$this->input = Html::input($name, $type)->id($id)->value($value)->appendTo($this);
+		$this->label = Html::label($label)->for($id)->addClass('follow')->appendTo($this);
 	}
 	
 	/**
 	 * 设置此input的required属性。
 	 * 
 	 * @param string $required
-	 * @return \mFramework\Html\Element\Input
 	 */
 	public function required($required = true)
 	{
@@ -64,7 +57,6 @@ class InputSpan extends Element
 	 * 设置此input的checked属性。注意对于某些类型的input无效。
 	 *
 	 * @param string $checked
-	 * @return \mFramework\Html\Element\Input
 	 */
 	public function checked($checked = true)
 	{

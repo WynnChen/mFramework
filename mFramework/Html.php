@@ -310,14 +310,5 @@ class Html
 		return $frag;
 	}
 
-	public static function svg($use = null)
-	{
-		$svg = self::__callStatic('svg');
-		if ($use) {
-			$svg->append(self::__callStatic('use', [''])->set('xlink:href', $use));
-		}
-		return $svg;
-	}
-
 }
 

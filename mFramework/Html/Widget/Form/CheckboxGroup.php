@@ -4,13 +4,8 @@ namespace mFramework\Widget\Form;
 use mFramework\Html;
 use mFramework\Html\Element;
 
-class CheckboxGroup
+class CheckboxGroup extends Element
 {
-	public function __construct()
-	{
-		parent::__construct('span');
-	}
-	
 	/**
 	 * 其内的所有checkbox都会用 "$name[$key]" 这样的格式做为name属性，即一数组
 	 * post中取得的内容是一个数组，包含了所有被checked的项目。每个项目的 value为 $info 数组的key
@@ -24,13 +19,13 @@ class CheckboxGroup
 	 *			初始选中值，可以为null
 	 * @return Html\Element
 	 */
-	public static function create($name, $info, array $checked_values = null)
+	public function __construct($name, array $info, ?array $checked_values = null)
 	{
-		$box = new self();
-		$box->set('class', 'checkbox_group');
+		parent::__construct('span');
+		$this->addClass('checkbox_group');
 		$items = [];
 		foreach ($info as $key => $display) {
-			$items[$key] = InputSpan::create('checkbox', $name . '[' . $key . ']', $key, $display)->appendTo($box);
+			$items[$key] = InputSpan::create('checkbox', $name . '[' . $key . ']', $key, $display)->appendTo($this);
 		}
 		if ($checked_values) {
 			foreach ($checked_values as $value) {
@@ -39,6 +34,5 @@ class CheckboxGroup
 				}
 			}
 		}
-		return $box;
 	}
 }

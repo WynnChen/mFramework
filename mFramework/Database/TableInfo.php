@@ -3,12 +3,6 @@ declare(strict_types=1);
 
 namespace mFramework\Database;
 
-use mFramework\Database\Attribute\Field;
-use mFramework\Database\Attribute\Table;
-use ReflectionClass;
-use ReflectionException;
-use ReflectionNamedType;
-
 /**
  * Record 类连接数据库的表配置信息
  * value object，不可变。

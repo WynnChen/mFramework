@@ -15,19 +15,8 @@ class selectGroup extends Select
 	 * @param string $name name属性值
 	 * @param array $info $value=>$display数组
 	 * @param string $value 选定值
-	 * @return \mFramework\Html\Element\Select
 	 */
-	public static function create($name, $info, $value = null)
-	{
-		$select = new self($name, $info);
-		if($value === null or !$select->selectValue($value)){
-			$select->setDefaultPlaceholder('(请选择)')->addClass('unselected');
-		}
-		
-		return $select;
-	}
-	
-	public function __construct($name, $info)
+	public function __construct($name, $info, $value = null)
 	{
 		parent::__construct($name);
 		foreach ($info as $key => &$display) {
@@ -37,6 +26,12 @@ class selectGroup extends Select
 			$this->append($display);
 		}
 		$this->options = $info;
+
+		if($value === null or !$this->selectValue($value)){
+			$this->setDefaultPlaceholder('(请选择)')->addClass('unselected');
+		}
+
+
 	}
 	
 	
