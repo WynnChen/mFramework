@@ -5,6 +5,8 @@ namespace mFramework;
 
 use mFramework\Http\Request;
 use mFramework\Http\Response;
+use mFramework\View\HttpNotFound;
+use mFramework\View\HttpRedirect;
 
 /**
  *
@@ -204,6 +206,40 @@ abstract class Action implements RequestHandlerInterface
 	final protected function getData(): Map
 	{
 		return $this->data;
+	}
+
+	/**
+	 * 调用后可以直接return或者随后return，即，在 action 中代码类似于：
+	 * return $this->redirect($url); //直接return，返回相应响应
+	 * 或者：
+	 * $this->redirect($url); //调用 View/Http/Redirect 这个view，放弃直接返回的那个response；
+	 * return; //然后终止，不做后继处理了。
+	 *
+	 *
+	 *
+	 * @param $url
+	 * @param int $code
+	 * @param null $msg
+	 * @return Response
+	 * @throws Http\InvalidArgumentException
+	 */
+	protected function redirect($url, $code = 302, $msg = null):Response
+	{
+		$this->assign('_location', $url);
+		$this->assign('_reason', $msg);
+		$this->assign('_code', $code);
+		$this->setView(HttpRedirect::class);
+		return new Response(status: $code, headers: ['Location' => $url], reason: $msg);
+	}
+
+	/**
+	 * @return Response
+	 * @throws Http\InvalidArgumentException
+	 */
+	protected function notFound(): Response
+	{
+		$this->setView(HttpNotFound::class);
+		return new Response(status:404); //todo 做个404页面
 	}
 
 }

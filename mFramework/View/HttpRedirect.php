@@ -11,6 +11,6 @@ class HttpRedirect implements View
 {
 	public function renderResponse(?Map $data = null): Response
 	{
-		$response = new Response(status:$data->_code ?: 302, headers: ['Location'=>$data->_location], reason: $data->_reason);
+		return new Response(status:$data->_code ?: 302, headers: ['Location'=>$data->_location], reason: $data->_reason);
 	}
 }
