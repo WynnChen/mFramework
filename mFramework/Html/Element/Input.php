@@ -12,10 +12,10 @@ use \mFramework\Html;
  */
 class Input extends \mFramework\Html\Element
 {
-	public function __construct($name, $type = null, $value = null)
+	public function __construct($name = null, $type = null, $value = null)
 	{
 		parent::__construct('input');
-		$this->setAttribute('name', $name);
+		$name and $this->setAttribute('name', $name);
 		$type and $this->setAttribute('type', $type);
 		$value and $this->setAttribute('value', $value);
 	}
@@ -50,6 +50,17 @@ class Input extends \mFramework\Html\Element
 		}
 		else{
 			$this->removeAttribute('checked');
+		}
+		return $this;
+	}
+
+	public function readonly($readonly = true)
+	{
+		if($readonly){
+			$this->setAttribute('readonly', 'readonly');
+		}
+		else{
+			$this->removeAttribute('$readonly');
 		}
 		return $this;
 	}

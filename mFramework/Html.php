@@ -202,7 +202,7 @@ class Html
 			->set('value', $max_size);
 	}
 
-	public static function input($name, $type = 'text', $value = null)
+	public static function input($name = null, $type = 'text', $value = null)
 	{
 		return new Input($name, $type, $value);
 	}

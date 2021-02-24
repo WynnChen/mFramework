@@ -865,7 +865,7 @@ final class Request extends Message
 
 	public function getQueryParam(string $name, mixed $default = null)
 	{
-		return $this->queryParams[$name] ?? $default;
+		return trim($this->queryParams[$name]) ?? $default;
 	}
 
 	/**
@@ -896,7 +896,7 @@ final class Request extends Message
 	public function getPostParam(string $name, mixed $default = null)
 	{
 		if($this->method === 'POST'){
-			return $this->parsedBody[$name] ?? $default;
+			return trim($this->parsedBody[$name]) ?? $default;
 		}else{
 			return $default;
 		}

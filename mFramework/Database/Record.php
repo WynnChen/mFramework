@@ -461,8 +461,6 @@ abstract class Record implements ArrayAccess
 		}
 		$this->beforeWrite();
 
-		var_dump($this);
-
 		$cols = [];
 		$values = [];
 		$params = null;
