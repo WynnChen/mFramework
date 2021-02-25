@@ -135,7 +135,8 @@ class Element extends \DOMElement implements \ArrayAccess
 	 */
 	public function addClass(?string ...$class):static
 	{
-		$classes = array_merge(explode(' ', $this->getAttribute('class')), (array)$class);
+		$classes = explode(' ', $this->getAttribute('class'));
+		$classes = array_merge($classes, array_diff((array)$class, $classes)); //array_diff去掉重复的部分。
 		$this->setAttribute('class', trim(implode(' ', $classes)));
 		return $this;
 	}
