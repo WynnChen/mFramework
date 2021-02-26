@@ -50,7 +50,7 @@ class SimpleDataTable extends Element
 			foreach ($data as $key => $item) {
 				$row_no++;
 				$tr = Html::tr()->appendTo($tbody);
-				// 不要用  $callback($tr,$item,$i)的用法，增加灵活度。
+				// 不要用  $callback($tr,$item,$key, $i)的用法，增加灵活度。
 				call_user_func($callback, $tr, $item, $key, $row_no);
 			}
 		}
