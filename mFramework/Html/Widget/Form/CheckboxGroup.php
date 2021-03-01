@@ -1,5 +1,5 @@
 <?php
-namespace mFramework\Widget\Form;
+namespace mFramework\Html\Widget\Form;
 
 use mFramework\Html;
 use mFramework\Html\Element;

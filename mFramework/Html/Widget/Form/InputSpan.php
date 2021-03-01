@@ -1,17 +1,7 @@
 <?php
-/**
- * mFramework - a mini PHP framework
- * 
- * Require PHP 7 since v4.0
- *
- * @package   mFramework
- * @version   4.1
- * @copyright 2009 - 2016 Wynn Chen
- * @author    Wynn Chen <wynn.chen@outlook.com>
- */
-namespace mFramework\Widget\Form;
+namespace mFramework\Html\Widget\Form;
 
-use \mFramework\Html;
+use mFramework\Html;
 use mFramework\Html\Element;
 
 /**
@@ -32,7 +22,7 @@ class InputSpan extends Element
 		if (!$id) {
 			$id = $name . '_' . mt_rand(0, 99) . uniqid();
 		}
-		$this->addClass($type);
+		$this->addClass($type, 'input_span');
 		$this->input = Html::input($name, $type)->id($id)->value($value)->appendTo($this);
 		$this->label = Html::label($label)->for($id)->addClass('follow')->appendTo($this);
 	}
@@ -52,13 +42,14 @@ class InputSpan extends Element
 		}
 		return $this;
 	}
-	
+
 	/**
 	 * 设置此input的checked属性。注意对于某些类型的input无效。
 	 *
 	 * @param string $checked
+	 * @return InputSpan
 	 */
-	public function checked($checked = true)
+	public function checked(string $checked)
 	{
 		if($checked){
 			$this->input->setAttribute('checked', 'checked');
@@ -69,4 +60,34 @@ class InputSpan extends Element
 		return $this;
 	}
 
+	/**
+	 *
+	 * @param bool $disabled
+	 * @return InputSpan
+	 */
+	public function disabled(bool $disabled = true)
+	{
+		if($disabled){
+			$this->input->setAttribute('disabled', 'disabled');
+		}
+		else{
+			$this->input->removeAttribute('disabled');
+		}
+		return $this;
+	}
+
+	/**
+	 *
+	 * @return InputSpan
+	 */
+	public function readonly(bool $readonly = true)
+	{
+		if($readonly){
+			$this->input->setAttribute('readonly', 'readonly');
+		}
+		else{
+			$this->input->removeAttribute('readonly');
+		}
+		return $this;
+	}
 }

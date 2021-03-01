@@ -106,7 +106,7 @@ class TableInfo
 		return $this->ignore_on_write;
 	}
 
-	public function getDefaultOrderBy(): array
+	public function getDefaultOrderBy(): ?array
 	{
 		return $this->default_order_by;
 	}
