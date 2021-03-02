@@ -26,13 +26,14 @@ abstract class InputSpan extends Element
 		$this->input = Html::input($name, $type)->id($id)->value($value)->appendTo($this);
 		$this->label = Html::label($label)->for($id)->addClass('follow')->appendTo($this);
 	}
-	
+
 	/**
 	 * 设置此input的required属性。
-	 * 
-	 * @param string $required
+	 *
+	 * @param bool $required
+	 * @return $this
 	 */
-	public function required($required = true)
+	public function required(bool $required = true)
 	{
 		if($required){
 			$this->input->setAttribute('required', 'required');
@@ -46,10 +47,10 @@ abstract class InputSpan extends Element
 	/**
 	 * 设置此input的checked属性。注意对于某些类型的input无效。
 	 *
-	 * @param string $checked
-	 * @return InputSpan
+	 * @param bool $checked
+	 * @return $this
 	 */
-	public function checked(string $checked)
+	public function checked(bool $checked = true)
 	{
 		if($checked){
 			$this->input->setAttribute('checked', 'checked');

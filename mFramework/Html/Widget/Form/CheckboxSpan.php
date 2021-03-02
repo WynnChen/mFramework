@@ -10,10 +10,10 @@ use mFramework\Html;
  * @package mFramework
  * @author Wynn Chen
  */
-class RadioSpan extends InputSpan
+class CheckboxSpan extends InputSpan
 {
 	public function __construct($name, $value, $label, $id = null)
 	{
-		parent::__construct('radio', $name, $value, $label, $id);
+		parent::__construct('checkbox', $name, $value, $label, $id);
 	}
 }
