@@ -11,7 +11,7 @@ use mFramework\Html\Element;
  * @package mFramework
  * @author Wynn Chen
  */
-abstract class InputSpan extends Element
+class InputSpan extends Element
 {
 	public $input;
 	public $label;
@@ -76,4 +76,18 @@ abstract class InputSpan extends Element
 		return $this;
 	}
 
+	/**
+	 *
+	 * @return InputSpan
+	 */
+	public function readonly(bool $readonly = true)
+	{
+		if($readonly){
+			$this->input->setAttribute('readonly', 'readonly');
+		}
+		else{
+			$this->input->removeAttribute('readonly');
+		}
+		return $this;
+	}
 }
