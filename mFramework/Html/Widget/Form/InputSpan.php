@@ -37,9 +37,11 @@ abstract class InputSpan extends Element
 	{
 		if($required){
 			$this->input->setAttribute('required', 'required');
+			$this->addClass('required');
 		}
 		else{
 			$this->input->removeAttribute('required');
+			$this->removeClass('required');
 		}
 		return $this;
 	}
@@ -54,9 +56,11 @@ abstract class InputSpan extends Element
 	{
 		if($checked){
 			$this->input->setAttribute('checked', 'checked');
+			$this->addClass('checked');
 		}
 		else{
 			$this->input->removeAttribute('checked');
+			$this->removeClass('checked');
 		}
 		return $this;
 	}
@@ -70,9 +74,11 @@ abstract class InputSpan extends Element
 	{
 		if($disabled){
 			$this->input->setAttribute('disabled', 'disabled');
+			$this->addClass('disabled');
 		}
 		else{
 			$this->input->removeAttribute('disabled');
+			$this->removeClass('disabled');
 		}
 		return $this;
 	}

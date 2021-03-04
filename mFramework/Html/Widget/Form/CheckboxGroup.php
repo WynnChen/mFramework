@@ -49,6 +49,7 @@ class CheckboxGroup extends Element
 		foreach ($this->items as $input_span){
 			$input_span->required($required);
 		}
+		$this->addClass('required');
 		return $this;
 	}
 
@@ -61,6 +62,7 @@ class CheckboxGroup extends Element
 		foreach ($this->items as $input_span){
 			$input_span->disabled($disabled);
 		}
+		$this->addClass('disabled');
 		return $this;
 	}
 }
