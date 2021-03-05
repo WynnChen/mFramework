@@ -88,7 +88,7 @@ abstract class Action implements RequestHandlerInterface
 	 * 本action的业务逻辑,GET方法时
 	 *
 	 * @param Request $request
-	 * @return mixed Response实例或者对 Response 的 body 有效的所有类型。
+	 * @return void|mixed Response实例或者对 Response 的 body 有效的所有类型。
 	 * @noinspection PhpMissingReturnTypeInspection
 	 */
 	protected function runGet(Request $request)
@@ -100,7 +100,7 @@ abstract class Action implements RequestHandlerInterface
 	 * 本action的业务逻辑,默认版本
 	 *
 	 * @param Request $request
-	 * @return mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @return void|mixed Response实例或者对 Response 的body有效的所有类型。
 	 * @noinspection PhpMissingReturnTypeInspection
 	 * @noinspection PhpUnusedParameterInspection
 	 */
@@ -114,7 +114,7 @@ abstract class Action implements RequestHandlerInterface
 	 * 本action的业务逻辑,POST方法时
 	 *
 	 * @param Request $request
-	 * @return mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @return void|mixed Response实例或者对 Response 的body有效的所有类型。
 	 * @noinspection PhpMissingReturnTypeInspection
 	 */
 	protected function runPost(Request $request)

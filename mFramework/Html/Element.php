@@ -68,7 +68,7 @@ class Element extends \DOMElement implements \ArrayAccess
 		if ($args[0] === null) {
 			$this->removeAttribute($name);
 		} else {
-			$this->setAttribute($name, $args[0]);
+			$this->setAttribute($name, (string)$args[0]);
 		}
 		return $this;
 	}
@@ -84,7 +84,7 @@ class Element extends \DOMElement implements \ArrayAccess
 			$this->removeAttribute($attribute);
 		}
 		else{
-			$this->setAttribute($attribute, $value);
+			$this->setAttribute($attribute, (string)$value);
 		}
 		return $this;
 	}
@@ -107,7 +107,7 @@ class Element extends \DOMElement implements \ArrayAccess
 
 	public function offsetSet(mixed $offset, $value):void
 	{
-		$this->setAttribute($offset, $value);
+		$this->setAttribute($offset, (string)$value);
 	}
 
 	public function offsetUnset($offset)

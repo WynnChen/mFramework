@@ -219,10 +219,9 @@ class Html
 
 	public static function textarea($name, ...$content)
 	{
-		if (!$content) {
-			$content = [''];
-		}
-		return self::__callStatic('textarea', $content)->set('name', $name);
+		$el = self::__callStatic('textarea', [''])->set('name', $name);
+		$el->append(...$content);
+		return $el;
 	}
 
 	public static function img($src, $alt = null)
