@@ -865,7 +865,16 @@ final class Request extends Message
 
 	public function getQueryParam(string $name, mixed $default = null)
 	{
-		return isset($this->queryParams[$name]) ? trim($this->queryParams[$name]) : $default ;
+		if(isset($this->queryParams[$name])){
+			if(is_string($this->queryParams[$name])){
+				return trim($this->queryParams[$name]);
+			}
+			else{
+				return $this->queryParams[$name];
+			}
+		}
+		return $default;
+
 	}
 
 	/**
@@ -896,10 +905,16 @@ final class Request extends Message
 	public function getPostParam(string $name, mixed $default = null)
 	{
 		if($this->method === 'POST'){
-			return isset($this->parsedBody[$name]) ? trim($this->parsedBody[$name]) : $default ;
-		}else{
-			return $default;
+			if(isset($this->parsedBody[$name])){
+				if(is_string($this->parsedBody[$name])){
+					return trim($this->parsedBody[$name]);
+				}
+				else{
+					return $this->parsedBody[$name];
+				}
+			}
 		}
+		return $default;
 	}
 
 	public function getCustomParams(): array
