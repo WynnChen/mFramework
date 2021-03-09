@@ -350,11 +350,11 @@ abstract class Record implements ArrayAccess
 	 * 调用方自行保证参数信息正确。
 	 *
 	 * @param mixed ...$values 主键值，按照定义顺序。
-	 * @return Record|null
+	 * @return static|null
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	static public function selectByPk(mixed ...$values): static|null
+	static public function selectByPk(mixed ...$values): ?static
 	{
 		list($where, $params) = self::buildPkConstraint($values);
 		$sql = 'SELECT * FROM ' . static::table() . ' WHERE ' . $where;
