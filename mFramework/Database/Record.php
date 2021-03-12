@@ -8,6 +8,7 @@ use mFramework\Database\Attribute\Field;
 use mFramework\Database\Attribute\Table;
 use mFramework\Utility\Paginator;
 use PDO;
+use PHPUnit\phpDocumentor\Reflection\Types\Iterable_;
 use ReflectionClass;
 use ReflectionNamedType;
 
@@ -35,9 +36,6 @@ use ReflectionNamedType;
  *    ...
  * }
  *
- * 为了能够正常使用，必须在引入了类之后、实际开始使用之前用 TableInfo::register($class_name)
- * 来初始化本类的数据库配置信息。如果使用 mFramework 的classLoader 来做 autoload 那么这一段会自动进行。
- * 否则需要自行处理。
  *
  * @see Table
  * @see Field
@@ -263,12 +261,16 @@ abstract class Record implements ArrayAccess
 	 * 也就是说如果是通过select得来的，在调用本方法之前实际上各个字段已经有内容了。
 	 * 如果使用了 PDO::FETCH_PROPS_LATE 来进行就无法正确做额外处理了。
 	 * @param bool $fetch 用于给PDO的stmt->fetch()来标记是否是通过查询得到的内容，不要手工设置。
+	 * @param iterable|null $values 如果提供了，会用这个值覆盖
 	 */
-	public function __construct(bool $fetch = false)
+	public function __construct(bool $fetch = false, ?iterable $values = null)
 	{
 		if($fetch){
 			//查询得到的结果，需要后处理。
 			$this->afterRead();
+		}
+		if($values){
+			$this->setValues($values);
 		}
 	}
 
@@ -554,7 +556,6 @@ abstract class Record implements ArrayAccess
 	/**
 	 * 取得字段值数组。
 	 * 如果不考虑非数据库字段的额外属性带来的污染问题，
-	 * 可以直接用getArrayCopy()
 	 *
 	 * @return array
 	 * @throws Exception
@@ -668,5 +669,22 @@ abstract class Record implements ArrayAccess
 
 	public function offsetUnset($offset){
 		unset($this->{$offset});
+	}
+
+	/**
+	 * 一次性设置多个字段，会过滤并非有效字段的内容。
+	 *
+	 * @param iterable $values
+	 * @return $this
+	 */
+	private function setValues(iterable $values) : static
+	{
+		$fields = array_flip(self::getTableInfo()->getFields());
+		foreach($values as $key => $value){
+			if(isset($fields[$key])){
+				$this->offsetSet($key, $value);
+			}
+		}
+		return $this;
 	}
 }
