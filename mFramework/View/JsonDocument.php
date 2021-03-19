@@ -16,14 +16,43 @@ class JsonDocument implements View
 	protected $key;
 	protected $options =  JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 	protected $depth = 512;
-	
+	protected $headers = ['Content-type'=> 'application/json; charset=utf-8'];
+
+	/**
+	 * @return string[]
+	 */
+	public function getHeaders(): array
+	{
+		return $this->headers;
+	}
+
+	/**
+	 */
+	public function getHeader($key)
+	{
+		return $this->headers[$key] ?? null;
+	}
+
+	/**
+	 * @param array $headers
+	 */
+	public function setHeader($key, $value): static
+	{
+		if($value === null){
+			unset($this->headers[$key]);
+		}
+		$this->headers[$key] = $value;
+		return $this;
+	}
+
 	public function getKey()
 	{
 		return $this->key;
 	}
-	public function setKey($key)
+	public function setKey($key): static
 	{
 		$this->key = $key;
+		return $this;
 	}
 	
 	
@@ -35,9 +64,10 @@ class JsonDocument implements View
 	 * $options for json_encode()
 	 * @param int $options
 	 */
-	public function setOptions($options)
+	public function setOptions($options): static
 	{
 		$this->options = $options;
+		return $this;
 	}
 	
 	public function getDepth()
@@ -49,9 +79,10 @@ class JsonDocument implements View
 	 * $depth for json_encode()
 	 * @param int $depth
 	 */
-	public function setDepth($depth)
+	public function setDepth($depth): static
 	{
 		$this->depth = $depth;
+		return $this;
 	}
 
 
@@ -65,7 +96,8 @@ class JsonDocument implements View
 	public function renderResponse(?Map $data=null):Response
 	{
 		return new Response(
-			headers: ['Content-type'=> 'application/json; charset=utf-8'],
+			headers: $this->headers,
 			body: json_encode($this->key ? $data[$this->key] : $data, $this->options, $this->depth));
 	}
+
 }
