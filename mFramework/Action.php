@@ -102,12 +102,11 @@ abstract class Action implements RequestHandlerInterface
 	 * @param Request $request
 	 * @return void|mixed Response实例或者对 Response 的body有效的所有类型。
 	 * @noinspection PhpMissingReturnTypeInspection
-	 * @noinspection PhpUnusedParameterInspection
 	 */
 	protected function run(Request $request)
 	{
 		//子类一般实现这个方法。
-		return '';
+		//return '';
 	}
 
 	/**

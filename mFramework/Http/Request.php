@@ -581,7 +581,7 @@ final class Request extends Message
 	 */
 	private static function createStreamFromFile(string $filename, string $mode = 'r'): Stream
 	{
-		$resource = @fopen($filename, $mode);
+		$resource = $filename ? @fopen($filename, $mode): false; //fopen现在不接受空的$filename参数了。
 		if (false === $resource) {
 			if ('' === $mode || false === in_array($mode[0], ['r', 'w', 'a', 'x', 'c'])) {
 				throw new InvalidArgumentException('The mode ' . $mode . ' is invalid.');
