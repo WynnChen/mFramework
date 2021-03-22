@@ -8,7 +8,6 @@ use mFramework\Database\Attribute\Field;
 use mFramework\Database\Attribute\Table;
 use mFramework\Utility\Paginator;
 use PDO;
-use PHPUnit\phpDocumentor\Reflection\Types\Iterable_;
 use ReflectionClass;
 use ReflectionNamedType;
 
@@ -44,19 +43,11 @@ use ReflectionNamedType;
 abstract class Record implements ArrayAccess
 {
 
-	const DATATYPE_NULL = 0;
-	const DATATYPE_STRING = 1;
-	const DATATYPE_BOOL = 2;
-	const DATATYPE_INT = 3;
-	const DATATYPE_FLOAT = 4;
-
-	const PARAM_BOOL = PDO::PARAM_BOOL;
-	const PARAM_INT = PDO::PARAM_INT;
-	const PARAM_FLOAT = PDO::PARAM_STR;
-	const PARAM_NULL = PDO::PARAM_NULL;
-	const PARAM_STR = PDO::PARAM_STR;
-	const PARAM_STRING = PDO::PARAM_STR;
-	const PARAM_LOB = PDO::PARAM_LOB;
+	const DATATYPE_NULL = PDO::PARAM_NULL;
+	const DATATYPE_STRING = PDO::PARAM_STR;
+	const DATATYPE_BOOL = PDO::PARAM_BOOL;
+	const DATATYPE_INT = PDO::PARAM_INT;
+	const DATATYPE_FLOAT = PDO::PARAM_STR;
 
 	/**
 	 * @var array TableInfo[]
@@ -457,25 +448,25 @@ abstract class Record implements ArrayAccess
 	public function insert(): bool
 	{
 		// 所有需要指定值的字段
-		$fields = self::getTableInfo()?->getWriteFields();
+		$f = $fields = self::getTableInfo()?->getWriteFields();
 		if (!$fields) {
 			throw new QueryException('Insert need at least one col.');
 		}
 		$this->beforeWrite();
 
-		$cols = [];
-		$values = [];
-		$params = null;
+		array_walk($f, fn(&$x) => $x = self::field($x));
+		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $f) . ') VALUES (' . implode(', ', array_fill(1, count($f), '?')) . ')';
+		$stmt = static::con('w')->prepare($sql);
+		$type = self::getTableInfo()?->getFieldsType();
+		$i = 1;
 		foreach ($fields as $field) {
-			$cols[] = self::field($field);
-			$values[] = '?';
-			$params[] = $this[$field];
+			$stmt->bindValue($i, $this[$field], $type[$field]);
+			$i++;
 		}
-		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $values) . ')';
-		$result = static::execute($sql, $params);
+		$result = $stmt->execute();
 		$auto_inc = self::getTableInfo()?->getAutoInc();
 		if ($result && $auto_inc) {
-			$this->{$auto_inc} = self::typeCast(static::con('w')->lastInsertId(), self::getTableInfo()?->getFieldsType()[$auto_inc] ?? self::DATATYPE_STRING);
+			$this->{$auto_inc} = self::typeCast(static::con('w')->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
 		}
 		return (bool)$result;
 	}

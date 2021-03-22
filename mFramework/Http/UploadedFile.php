@@ -178,7 +178,7 @@ final class UploadedFile
 	 * 用此方法来代替 move_uploaded_file()。 此方法会检查所处环境，决定应当调用
 	 * move_uploaded_file(), rename(), 还是 stream 操作来完成本操作。
 	 *
-	 * $targetPath 必须是绝对路径或相对路径。如果是相对路径，则按照 PHP 的 rename() 所使用的规则进行解析。
+	 * 目标位置是 $targetPath.$targetFilename，结果必须是绝对路径或相对路径。如果是相对路径，则按照 PHP 的 rename() 所使用的规则进行解析。
 	 *
 	 * 完成之后，会删掉原始的文件或 stream 。
 	 *
@@ -192,17 +192,24 @@ final class UploadedFile
 	 *
 	 * @see http://php.net/is_uploaded_file
 	 * @see http://php.net/move_uploaded_file
-	 * @param string $targetPath 移动的目标路径+文件名。
+	 * @param string $targetPath 移动的目标路径。
+	 * @param string $targetFilename 目标文件名。
+	 * @param bool $auto_create_dir
 	 * @throws InvalidArgumentException 如果指定 $targetPath 无效.
 	 * @throws RuntimeException 如果多次调用
 	 */
-	public function moveTo(string $targetPath): void
+	public function moveTo(string $targetPath, string $targetFilename, $auto_create_dir = true): void
 	{
 		$this->validateActive();
 
 		if ($targetPath === '') {
 			throw new InvalidArgumentException('Invalid path provided for move operation; must be a non-empty string');
 		}
+
+		if(!file_exists($targetPath) and $auto_create_dir){
+			mkdir($targetPath, recursive: true);
+		}
+		$targetPath = $targetPath.$targetFilename;
 
 		if (null !== $this->file) {
 			$this->moved = ('cli' === PHP_SAPI) ? rename($this->file, $targetPath) : move_uploaded_file($this->file, $targetPath);

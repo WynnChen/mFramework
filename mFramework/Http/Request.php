@@ -827,6 +827,15 @@ final class Request extends Message
 	}
 
 	/**
+	 * @param $name
+	 * @return UploadedFile|array|null
+	 */
+	public function getUploadedFile($name): UploadedFile|array|null
+	{
+		return $this->uploadedFiles[$name] ?? null;
+	}
+
+	/**
 	 * Retrieve cookies.
 	 *
 	 * Retrieves cookies sent by the client to the server.
@@ -867,7 +876,7 @@ final class Request extends Message
 	{
 		if(isset($this->queryParams[$name])){
 			if(is_string($this->queryParams[$name])){
-				return trim($this->queryParams[$name]);
+				return trim($this->queryParams[$name]) ?: $default;
 			}
 			else{
 				return $this->queryParams[$name];
@@ -907,7 +916,7 @@ final class Request extends Message
 		if($this->method === 'POST'){
 			if(isset($this->parsedBody[$name])){
 				if(is_string($this->parsedBody[$name])){
-					return trim($this->parsedBody[$name]);
+					return trim($this->parsedBody[$name]) ?: $default;
 				}
 				else{
 					return $this->parsedBody[$name];
