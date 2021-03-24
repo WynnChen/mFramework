@@ -583,11 +583,11 @@ abstract class Record implements ArrayAccess
 	 * 注意：如果有传入参数，则本方法实际更新的字段完全依据参数传递，不考虑 auto inc 和 readonly 属性。
 	 *
 	 * @param string ...$fields 要更新那些字段？默认为非。
-	 * @return int|false 更新行数，或者结果false
+	 * @return bool 结果
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	public function update(string ...$fields): int|false
+	public function update(string ...$fields): bool
 	{
 		$info = self::getTableInfo();
 		if(!$fields){
@@ -607,21 +607,28 @@ abstract class Record implements ArrayAccess
 
 		$set = array();
 		$where = array();
-		$params = null;
+		$params = [];
 		foreach ($fields as $field) {
 			$set[] = self::field($field) . ' = ?';
-			$params[] = $this[$field];
+			$params[] = $field;
 		}
 		foreach ($by_fields as $field) {
 			if ($this[$field] === null) {
 				$where[] = self::field($field) . ' IS NULL';
 			} else {
 				$where[] = self::field($field) . ' = ?';
-				$params[] = $this[$field];
+				$params[] = $field;
 			}
 		}
 		$sql = 'UPDATE ' . static::table() . ' SET ' . implode(', ', $set) . ' WHERE ' . implode(' AND ', $where);
-		return static::execute($sql, $params);
+		$stmt = static::con('w')->prepare($sql);
+		$type = self::getTableInfo()?->getFieldsType();
+		$i = 1;
+		foreach ($params as $field) {
+			$stmt->bindValue($i, $this[$field], $type[$field]);
+			$i++;
+		}
+		return $stmt->execute();
 	}
 
 	/**
