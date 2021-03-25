@@ -160,7 +160,7 @@ abstract class Record implements ArrayAccess
 			return null;
 		}
 		if($table and $enclose){
-			$table = self::enclose($table);
+			$table = self::e($table);
 		}
 		return $table;
 	}
@@ -178,7 +178,7 @@ abstract class Record implements ArrayAccess
 	final static public function field(string $field, bool $full = false, bool $enclose = true): string|null
 	{
 		if($enclose){
-			$field = self::enclose($field);
+			$field = self::e($field);
 		}
 		if($full){
 			$field = self::table($enclose).'.'.$field;
@@ -211,6 +211,18 @@ abstract class Record implements ArrayAccess
 	 * 按照本class对应的目标数据库的要求将标识符括起来。
 	 * 使用读链接的配置。
 	 *
+	 * @param string $s
+	 * @return string
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	protected static function e(string $s): string
+	{
+		return static::con('r')->enclose($s);
+	}
+
+	/**
+	 * 和 e()是一样的，优先用e
 	 * @param string $identifier
 	 * @return string
 	 * @throws ConnectionException
@@ -218,7 +230,7 @@ abstract class Record implements ArrayAccess
 	 */
 	protected static function enclose(string $identifier): string
 	{
-		return static::con('r')->enclose($identifier);
+		return static::e($identifier);
 	}
 
 	/**
@@ -253,6 +265,7 @@ abstract class Record implements ArrayAccess
 	 * 如果使用了 PDO::FETCH_PROPS_LATE 来进行就无法正确做额外处理了。
 	 * @param bool $fetch 用于给PDO的stmt->fetch()来标记是否是通过查询得到的内容，不要手工设置。
 	 * @param iterable|null $values 如果提供了，会用这个值覆盖
+	 * @throws Exception
 	 */
 	public function __construct(bool $fetch = false, ?iterable $values = null)
 	{
@@ -266,42 +279,89 @@ abstract class Record implements ArrayAccess
 	}
 
 	/**
+	 * 返回 simple select 语句，方便使用.注意最后是没有空格的，后面加东西的时候需要自己补上。
+	 * @return string
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static protected function ss() : string
+	{
+		return 'SELECT * FROM ' . static::table();
+	}
+
+	/**
 	 * 尝试根据sql来select对应的record，结果进入本类实例。
 	 * 如果指定了分页器，自动取分页器当前页对应的条目。
 	 *
 	 * @param string $sql 查询用的SQL，应当是有返回结果集的。
-	 * @param array|null $param sql中对应的占位符所需要绑定的参数
-	 * @param Paginator|null $paginator 分页器
+	 * @param array|null $params sql中对应的占位符所需要绑定的参数
+	 * @param int|array|Paginator|null $paginator 分页信息
 	 * @return ResultSet
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
 	static public function select(string $sql,
-									 ?array $param = null,
-									 ?Paginator $paginator = null): ResultSet
+									 ?array $params = null,
+									 null|int|array|Paginator $paginator = null): ResultSet
 	{
-		return static::con('r')->selectObjects(static::class, $sql, $param, $paginator);
+		return static::con('r')->selectObjects(static::class, $sql, $params, $paginator);
+	}
+
+	/**
+	 * @param array $constraint
+	 * @param int|array|Paginator|null $paginator
+	 * @param array|null $order_by
+	 * @return ResultSet|null
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function selectBy(array $constraint, null|int|array|Paginator $paginator = null,
+									 ?array $order_by = null): ?ResultSet
+	{
+		if(!$constraint){
+			throw new QueryException('selectBy need constraint ' . get_called_class());
+		}
+		$field_types = self::getTableInfo()->getFieldsType();
+		$where = [];
+		$params = [];
+		foreach($constraint as $field => $value){
+			if(!isset($field_types[$field])){
+				throw new QueryException($field.' for selectBy is invalid ' . get_called_class());
+			}
+			if ($value === null) {
+				$where[] = static::e($field) . ' IS NULL';
+			} else {
+				$where[] = static::e($field) . ' = ?';
+				$params[] = [$value, $field_types[$field]];
+			}
+		}
+		$where = implode(' AND ', $where);
+		$sql = static::ss() . ' WHERE ' . $where;
+
+		$order_info = $order_by ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
+		$order_info and $sql .= static::orderByStr($order_info);
+		return static::select($sql, $params, $paginator);
 	}
 
 	/**
 	 * 取得全部条目。
 	 * 如果提供了分页器，只取分页器当前页对应结果，
-	 * 同时可以自动将分页器的所有条目数值设置为结果条数。
+	 * 可以自动将分页器的所有条目数值设置为结果条数(有一个countAll()调用)
 	 *
-	 * @param Paginator|null $paginator 分页器
+	 * @param int|array|Paginator|null $paginator 分页信息，如果是array需要 [$limit, $offset]
 	 * @param array|null $order_info 排序信息数组，不提供就使用默认的。
 	 * @param string|null $sql
 	 * @return ResultSet
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	static public function selectAll(?Paginator $paginator = null,
+	static public function selectAll(null|int|array|Paginator $paginator = null,
 									 ?array $order_info = null,
 									 ?string $sql = null): ResultSet
 	{
-		$paginator && $paginator->setTotalItems(static::countAll());
+		($paginator instanceof Paginator) and $paginator->setTotalItems(static::countAll());
 
-		$sql = $sql ?: 'SELECT * FROM '.self::table();
+		$sql = $sql ?: static::ss();
 		$order_info = $order_info ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
 		$order_info and $sql .= static::orderByStr($order_info);
 
@@ -350,7 +410,7 @@ abstract class Record implements ArrayAccess
 	static public function selectByPk(mixed ...$values): ?static
 	{
 		list($where, $params) = self::buildPkConstraint($values);
-		$sql = 'SELECT * FROM ' . static::table() . ' WHERE ' . $where;
+		$sql = static::ss(). ' WHERE ' . $where;
 		return static::select($sql, $params)->firstRow();
 	}
 
@@ -516,9 +576,9 @@ abstract class Record implements ArrayAccess
 		foreach ($pk as $index => $field) {
 			$value  = $values[$field] ?? $values[$index] ?? null;
 			if ($value === null) {
-				$where[] = static::enclose($field) . ' IS NULL';
+				$where[] = static::e($field) . ' IS NULL';
 			} else {
-				$where[] = static::enclose($field) . ' = ?';
+				$where[] = static::e($field) . ' = ?';
 				$params[] = $value;
 			}
 		}
@@ -674,6 +734,7 @@ abstract class Record implements ArrayAccess
 	 *
 	 * @param iterable $values
 	 * @return $this
+	 * @throws Exception
 	 */
 	private function setValues(iterable $values) : static
 	{

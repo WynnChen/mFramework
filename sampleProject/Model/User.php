@@ -32,7 +32,7 @@ class User extends \mFramework\Database\Record
 	 */
 	public static function selectByEmail($email)
 	{
-		$sql = 'SELECT * FROM ' . self::table(true) . ' WHERE ' . self::enclose('email') . ' = ?';
+		$sql = 'SELECT * FROM ' . self::table(true) . ' WHERE ' . self::e('email') . ' = ?';
 		return self::select($sql, [$email])->firstRow();
 	}
 }

@@ -143,16 +143,37 @@ abstract class Connection extends PDO
 	 * @param array|null $construct_args 目标类的额外构造器参数。必然会有的一个参数是 ['fetch'=>true]
 	 * @return ResultSet
 	 */
-	public function selectObjects(string $className, string $sql, ?array $params = null, ?Paginator $paginator = null, ?array $construct_args = null): ResultSet
+	public function selectObjects(string $className, string $sql, ?array $params = null, null|int|array|Paginator $paginator = null, ?array $construct_args = null): ResultSet
 	{
 		try {
 			$params = $params ?? [];
 			$named = is_string(array_key_first($params)); //使用 :name 还是 ?
 			if ($paginator) {
 				$sql .= $named ? ' LIMIT :mfLimitStart, :mfLimitCount' : ' LIMIT ?, ?';
-				$params[$named?':mfLimitStart':null] = [($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage(), self::PARAM_INT];
-				$params[$named?':mfLimitCount':null] = [$paginator->getItemsPerPage(), self::PARAM_INT];
+				if(is_int($paginator)){
+					$limit = $paginator;
+					$offset = 0;
+				}elseif(is_array($paginator)){
+					if(count($paginator) != 2){
+						throw new QueryException('limit 信息数组数量不正确。');
+					}
+					list($limit, $offset) = $paginator;
+				}
+				else{
+					$limit = $paginator->getItemsPerPage();
+					$offset = ($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage();
+				}
+				if($named){
+					$params[':mfLimitStart'] = [$offset, self::PARAM_INT];
+					$params[':mfLimitCount'] = [$limit, self::PARAM_INT];
+				}
+				else{
+					$params[] = [$offset, self::PARAM_INT];
+					$params[] = [$limit, self::PARAM_INT];
+
+				}
 			}
+
 
 			$stmt = $this->prepare($sql);
 			$i = 1;
@@ -186,7 +207,7 @@ abstract class Connection extends PDO
 	 * @param Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
 	 * @return ResultSet
 	 */
-	public function select(string $sql, ?array $params = null, ?Paginator $paginator = null): ResultSet
+	public function select(string $sql, ?array $params = null, null|int|array|Paginator $paginator = null): ResultSet
 	{
 		return $this->selectObjects('\mFramework\Database\Row', $sql, $params, $paginator);
 	}
