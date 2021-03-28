@@ -4,7 +4,7 @@
  */
 namespace Model;
 
-class User extends \mFramework\Database\Record
+class SampleUser extends \mFramework\Database\Record
 {
 
 	const TYPE_USER = 1;
