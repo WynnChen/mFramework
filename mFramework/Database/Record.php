@@ -131,6 +131,7 @@ abstract class Record implements ArrayAccess
 			default_order_by: $table_obj->getOrderBy(),
 			auto_inc:$auto_inc,
 			fields: $fields,
+			immutable: $table_obj->isImmutable(),
 		);
 	}
 
@@ -264,17 +265,13 @@ abstract class Record implements ArrayAccess
 	 * 也就是说如果是通过select得来的，在调用本方法之前实际上各个字段已经有内容了。
 	 * 如果使用了 PDO::FETCH_PROPS_LATE 来进行就无法正确做额外处理了。
 	 * @param bool $fetch 用于给PDO的stmt->fetch()来标记是否是通过查询得到的内容，不要手工设置。
-	 * @param iterable|null $values 如果提供了，会用这个值覆盖
 	 * @throws Exception
 	 */
-	public function __construct(bool $fetch = false, ?iterable $values = null)
+	public function __construct(bool $fetch = false)
 	{
 		if($fetch){
 			//查询得到的结果，需要后处理。
 			$this->afterRead();
-		}
-		if($values){
-			$this->setValues($values);
 		}
 	}
 
@@ -409,6 +406,9 @@ abstract class Record implements ArrayAccess
 	 */
 	static public function selectByPk(mixed ...$values): ?static
 	{
+		if(!count($values)){
+			return null;
+		}
 		list($where, $params) = self::buildPkConstraint($values);
 		$sql = static::ss(). ' WHERE ' . $where;
 		return static::select($sql, $params)->firstRow();
@@ -424,10 +424,15 @@ abstract class Record implements ArrayAccess
 	 */
 	static public function deleteByPk(mixed ...$values): int|false
 	{
+		if(self::getTableInfo()?->isImmutable()){
+			throw new QueryException('this table is immutable.');
+		}
+		if(!count($values)){
+			return 0;
+		}
 		list($where, $params) = self::buildPkConstraint($values);
 		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . $where;
 		return static::execute($sql, $params);
-
 	}
 
 	/**
@@ -540,6 +545,9 @@ abstract class Record implements ArrayAccess
 	 */
 	public function delete(): bool
 	{
+		if(self::getTableInfo()?->isImmutable()){
+			throw new QueryException('this table is immutable.');
+		}
 		$fields = self::getTableInfo()?->getPk() ?? (array)self::getTableInfo()?->getAutoInc();
 		if (!$fields) {
 			throw new QueryException('delete need a col for WHERE.');
@@ -649,6 +657,9 @@ abstract class Record implements ArrayAccess
 	 */
 	public function update(string ...$fields): bool
 	{
+		if(self::getTableInfo()?->isImmutable()){
+			throw new QueryException('this table is immutable.');
+		}
 		$info = self::getTableInfo();
 		if(!$fields){
 			$fields = $info->getWriteFields();
@@ -736,14 +747,41 @@ abstract class Record implements ArrayAccess
 	 * @return $this
 	 * @throws Exception
 	 */
-	private function setValues(iterable $values) : static
+	public function setValues(iterable $values, $include_readonly_fields = false) : static
 	{
-		$fields = array_flip(self::getTableInfo()->getFields());
+		if($include_readonly_fields){
+			$fields = self::getTableInfo()->getFields();
+		}
+		else{
+			$fields = self::getTableInfo()->getWriteFields();
+		}
+		$fields = array_flip($fields);
 		foreach($values as $key => $value){
 			if(isset($fields[$key])){
 				$this->offsetSet($key, $value);
 			}
 		}
 		return $this;
+	}
+
+	/**
+	 * 对比两个record对象的指定字段内容是否有区别。
+	 *
+	 * @param Record $a 对象a
+	 * @param Record $b 对象b
+	 * @param array $fields 要对比字段名称表
+	 * @return bool 是否有区别？
+	 */
+	static protected function diff(?self $a, ?self $b, array $fields):bool
+	{
+		if(!$a or !$b){
+			return true;
+		}
+		foreach ($fields as $field) {
+			if ($a->$field !== $b->$field) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

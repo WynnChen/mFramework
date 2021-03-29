@@ -71,6 +71,10 @@ class TableInfo
 		 * @var array 字段列表
 		 */
 		private array $fields = [],
+		/**
+		 * @var bool 是否immutable，true的表默认不允许 update()方法。
+		 */
+		private bool $immutable = false,
 	)
 	{
 		//缓存可写字段
@@ -129,6 +133,14 @@ class TableInfo
 	public function getWriteFields(): array
 	{
 		return $this->write_fields;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isImmutable(): bool
+	{
+		return $this->immutable;
 	}
 
 }

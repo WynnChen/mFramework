@@ -15,7 +15,9 @@ use Attribute;
 class Table {
 	public function __construct(private array|string $connection,
 								private string $name,
-								private ?array $orderBy=null,)
+								private ?array $orderBy=null,
+								private bool $immutable=false
+	)
 	{}
 
 	/**
@@ -42,7 +44,13 @@ class Table {
 		return $this->orderBy;
 	}
 
+	/**
+	 * immutable 的表默认不能调用update()相关方法。
+	 * @return bool
+	 */
+	public function isImmutable() : bool
+	{
+		return $this->immutable;
+	}
 
 }
-
-
