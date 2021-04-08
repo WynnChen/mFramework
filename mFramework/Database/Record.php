@@ -584,9 +584,9 @@ abstract class Record implements ArrayAccess
 		foreach ($pk as $index => $field) {
 			$value  = $values[$field] ?? $values[$index] ?? null;
 			if ($value === null) {
-				$where[] = static::e($field) . ' IS NULL';
+				$where[] = static::field($field, true) . ' IS NULL';
 			} else {
-				$where[] = static::e($field) . ' = ?';
+				$where[] = static::field($field, true) . ' = ?';
 				$params[] = $value;
 			}
 		}
