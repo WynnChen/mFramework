@@ -484,8 +484,9 @@ abstract class Record implements ArrayAccess
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	static protected function orderByStr(?array $info): string
+	static protected function orderByStr(?array $info = null): string
 	{
+		$info = $info ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
 		if(!$info){
 			return '';
 		}
