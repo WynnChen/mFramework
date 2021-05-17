@@ -5,7 +5,7 @@ use mFramework\Html;
 use mFramework\Html\Element;
 use mFramework\Html\Element\Select;
 
-class selectGroup extends Select
+class SelectGroup extends Select
 {
 	private $default_placeholder = null;
 	private $options = [];
