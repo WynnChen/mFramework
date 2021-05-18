@@ -241,12 +241,12 @@ class Html
 
 	public static function javascript($script)
 	{
-		return self::__callStatic('script', ['//',document::getCurrent()->createCDATASection("\n" . $script . "\n//")]);
+		return self::__callStatic('script', [$script])->type('text/javascript');
 	}
 
 	public static function css($css)
 	{
-		return self::__callStatic('style', ['/*',document::getCurrent()->createCDATASection("*/\n" . $css . "\n/*"),'*/'])->set('type', 'text/css');
+		return self::__callStatic('style', [$css])->set('type', 'text/css');
 	}
 
 	/**
