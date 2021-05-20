@@ -18,9 +18,10 @@ use mFramework\View\HttpRedirect;
 abstract class Action implements RequestHandlerInterface
 {
 	private View|string|null $view = null;
-	private bool $enable_view = true;
-
-	private Map $data;
+	/**
+	 * @var Map 用于传递给View的数据内容。assign方法也是用于写入这里的
+	 */
+	protected Map $data;
 
 	public function __construct(private ?ActionPluginInterface $plugin = null)
 	{
@@ -41,7 +42,7 @@ abstract class Action implements RequestHandlerInterface
 	{
 		$this->plugin and $this->plugin->startHandle($this, $request);
 		$result = $this->execute($request);
-		$this->plugin and $this->plugin->afterExecute($this->getData(), $result);
+		$this->plugin and $this->plugin->afterExecute($this->data, $result);
 		$response = $this->render($result);
 		$this->plugin and $this->plugin->endHandle($response);
 		return $response;
@@ -74,21 +75,25 @@ abstract class Action implements RequestHandlerInterface
 			return $result;
 		}
 
-		if ($this->isViewEnabled()) {
+		if ((string)$result === '') {
 			$view = $this->getView();
 			$response = $view->renderResponse($this->data);
 			$this->plugin and $this->plugin->afterRender($view, $response);
 			return $response;
 		}
 
-		return new Response(status: 200, body: $result);
+		return new Response(status: 200, body: (string)$result);
 	}
 
 	/**
 	 * 本action的业务逻辑,GET方法时
 	 *
+	 * 如果返回Response实例，那么直接使用之；
+	 * 如果返回为false或者null或''或void时会触发view渲染；
+	 * 如果为其他内容，转为string后作为body生成status:200的response输出。
+	 *
 	 * @param Request $request
-	 * @return void|mixed Response实例或者对 Response 的 body 有效的所有类型。
+	 * @return Response|void|mixed
 	 * @noinspection PhpMissingReturnTypeInspection
 	 */
 	protected function runGet(Request $request)
@@ -99,8 +104,12 @@ abstract class Action implements RequestHandlerInterface
 	/**
 	 * 本action的业务逻辑,默认版本
 	 *
+	 * 如果返回Response实例，那么直接使用之；
+	 * 如果返回为false或者null或''或void时会触发view渲染；
+	 * 如果为其他内容，转为string后作为body生成status:200的response输出。
+	 *
 	 * @param Request $request
-	 * @return void|mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @return Response|void|mixed
 	 * @noinspection PhpMissingReturnTypeInspection
 	 */
 	protected function run(Request $request)
@@ -112,18 +121,17 @@ abstract class Action implements RequestHandlerInterface
 	/**
 	 * 本action的业务逻辑,POST方法时
 	 *
+	 * 如果返回Response实例，那么直接使用之；
+	 * 如果返回为false或者null或''或void时会触发view渲染；
+	 * 如果为其他内容，转为string后作为body生成status:200的response输出。
+	 *
 	 * @param Request $request
-	 * @return void|mixed Response实例或者对 Response 的body有效的所有类型。
+	 * @return Response|void|mixed
 	 * @noinspection PhpMissingReturnTypeInspection
 	 */
 	protected function runPost(Request $request)
 	{
 		return $this->run($request);
-	}
-
-	final protected function isViewEnabled(): bool
-	{
-		return $this->enable_view;
 	}
 
 	/**
@@ -165,23 +173,12 @@ abstract class Action implements RequestHandlerInterface
 	final protected function setView(string|View $view): self
 	{
 		$this->view = $view;
-		$this->enable_view = true;
 		return $this;
 	}
 
 	protected function getDefaultView(): string
 	{
 		return substr_replace($this::class, 'View', -6);
-	}
-
-	final protected function disableView(): void
-	{
-		$this->enable_view = false;
-	}
-
-	final protected function enableView(): void
-	{
-		$this->enable_view = true;
 	}
 
 	/**
