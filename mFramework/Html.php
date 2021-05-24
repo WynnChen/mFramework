@@ -241,7 +241,7 @@ class Html
 
 	public static function javascript($script)
 	{
-		return self::__callStatic('script', [$script])->type('text/javascript');
+		return self::__callStatic('script', ['//', Document::getCurrent()->createCDATASection("\n".$script."\n//")])->type('text/javascript');
 	}
 
 	public static function css($css)
