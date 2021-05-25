@@ -326,9 +326,9 @@ abstract class Record implements ArrayAccess
 				throw new QueryException($field.' for selectBy is invalid ' . get_called_class());
 			}
 			if ($value === null) {
-				$where[] = static::e($field) . ' IS NULL';
+				$where[] = static::field($field, true) . ' IS NULL';
 			} else {
-				$where[] = static::e($field) . ' = ?';
+				$where[] = static::field($field, true) . ' = ?';
 				$params[] = [$value, $field_types[$field]];
 			}
 		}
