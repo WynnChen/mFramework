@@ -305,15 +305,23 @@ abstract class Record implements ArrayAccess
 	}
 
 	/**
+	 * 直接传递一组约束来进行简单 select
+	 * $constraint 是 $field => $value ，其中每个元素的值可以是：
+	 * - null： 将使用 `field` IS NULL
+	 * - 标量： 将使用 `field` = ?
+	 * - 可遍历（例如数组）： 将使用 `field` IN (?, ?, ...)
+	 *
+	 *
 	 * @param array $constraint
 	 * @param int|array|Paginator|null $paginator
 	 * @param array|null $order_by
+	 * @param bool $or $constraint中的各个字段约束之间的关系 AND 还是 OR，默认 AND
 	 * @return ResultSet|null
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
 	static public function selectBy(array $constraint, null|int|array|Paginator $paginator = null,
-									 ?array $order_by = null): ?ResultSet
+									 ?array $order_by = null, $or = false): ?ResultSet
 	{
 		if(!$constraint){
 			throw new QueryException('selectBy need constraint ' . get_called_class());
@@ -327,16 +335,25 @@ abstract class Record implements ArrayAccess
 			}
 			if ($value === null) {
 				$where[] = static::field($field, true) . ' IS NULL';
-			} else {
+			} elseif ( is_iterable($value) ) {
+				$i = 0;
+				foreach($value as $v){
+					$params[] = [$v, $field_types[$field]];
+					$i++;
+				}
+				$where[] = static::field($field, true) . ' IN ('.implode(', ', array_fill(0, $i, '?')) .')';
+			}else{
 				$where[] = static::field($field, true) . ' = ?';
 				$params[] = [$value, $field_types[$field]];
 			}
 		}
-		$where = implode(' AND ', $where);
+
+		$where = '('.implode(') '.($or?'OR':'AND').' (', $where).')';
 		$sql = static::ss() . ' WHERE ' . $where;
 
 		$order_info = $order_by ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
 		$order_info and $sql .= static::orderByStr($order_info);
+
 		return static::select($sql, $params, $paginator);
 	}
 
