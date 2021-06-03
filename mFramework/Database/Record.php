@@ -72,7 +72,7 @@ abstract class Record implements ArrayAccess
 	 */
 	public function __construct(bool $fetch = false)
 	{
-		if ($fetch) {
+		if($fetch){
 			//查询得到的结果。记录快照，然后需要后处理。
 			$this->snap = $this->getValuesArray();
 			$this->afterRead();
@@ -82,16 +82,57 @@ abstract class Record implements ArrayAccess
 	/**
 	 * 取得字段值数组。
 	 *
+	 * @param string ...$fields 需要的字段，如果不写就全部。注意只有数据库表字段有效。
 	 * @return array
 	 * @throws Exception
 	 */
-	public function getValuesArray(): array
+	public function getValuesArray(string ...$fields): array
 	{
+		$f = self::getTableInfo()->getFields();
+		if($fields){
+			$f = array_intersect($f, $fields);
+		}
 		$array = array();
-		foreach (self::getTableInfo()->getFields() as $field) {
+		foreach ($f as $field) {
 			$array[$field] = $this[$field];
 		}
 		return $array;
+	}
+
+	/**
+	 * 取得PK字段值
+	 * 字段 => 值 数组。
+	 *
+	 * @return array
+	 * @throws Exception
+	 */
+	public function getPkValues(): array
+	{
+		$array = [];
+		foreach (self::getTableInfo()->getPrimaryKey() as $field) {
+			$array[$field] = $this[$field];
+		}
+		return $array;
+	}
+
+	/**
+	 * 模板方法，从数据库读取后被调用。
+	 * 实际调用时机是通过select来创建本对象时实例的 __construct() 内。
+	 * 手工new的时候不会触发。
+	 *
+	 * 可以在这里进行一些清理和格式化工作。
+	 */
+	protected function afterRead()
+	{
+	}
+
+	/**
+	 * 模板方法，在insert()与update()中写数据库之前被调用。
+	 *
+	 * 可以在这里进行一些清理工作
+	 */
+	protected function beforeWrite()
+	{
 	}
 
 	/**
@@ -116,11 +157,11 @@ abstract class Record implements ArrayAccess
 		//class attributes 分析,表相关属性
 		$reflection = new ReflectionClass(static::class);
 		$attributes = $reflection->getAttributes(Table::class);
-		if (!$attributes) {
+		if(!$attributes){
 			//没有表信息，可能是继承的，找父类：
 			$reflection = $reflection->getParentClass();
-			if (!$reflection) {//没有父类了
-				throw new Exception(static::class . ' 缺乏数据库属性配置信息。');
+			if(!$reflection){//没有父类了
+				throw new Exception(static::class.' 缺乏数据库属性配置信息。');
 			}
 			return $reflection->getName()::getTableInfo(); //用父类的信息
 		}
@@ -134,7 +175,7 @@ abstract class Record implements ArrayAccess
 		$auto_inc = null;
 		$ignore_on_write = [];
 		$properties = $reflection->getProperties();
-		foreach ($properties as $property) {
+		foreach($properties as $property) {
 			if ($property->isStatic()) {
 				continue; //静态属性不需要管
 			}
@@ -142,8 +183,8 @@ abstract class Record implements ArrayAccess
 			if (!$attributes) {
 				continue; //没有 "Field" attribute 的再见。
 			}
-			if (!$property->hasDefaultValue()) {
-				throw new Exception('字段属性 "' . static::class . '->' . $property->getName() . '" 必须有默认值（可以是null）。');
+			if(!$property->hasDefaultValue()){
+				throw new Exception('字段属性 "'.static::class.'->'.$property->getName().'" 必须有默认值（可以是null）。');
 			}
 			/** @var Field $field */
 			$field = $attributes[0]->newInstance(); //携带flag信息
@@ -162,14 +203,14 @@ abstract class Record implements ArrayAccess
 				$type = Record::DATATYPE_STRING;
 			}
 			$fields_type[$name] = $type; //写入字段定义数组。
-			if ($field->isPk()) {
+			if($field->isPk()){
 				$pk[] = $name;
 			}
-			if ($field->isAutoInc()) {
+			if($field->isAutoInc()){
 				$auto_inc = $name;
 				$ignore_on_write[] = $name; //auto inc 的也就不能写入。
 			}
-			if ($field->isReadOnly()) {
+			if($field->isReadOnly()){
 				$ignore_on_write[] = $name;
 			}
 		}
@@ -180,74 +221,10 @@ abstract class Record implements ArrayAccess
 			pk: $pk,
 			ignore_on_write: $ignore_on_write,
 			default_order_by: $table_obj->getOrderBy(),
-			auto_inc: $auto_inc,
+			auto_inc:$auto_inc,
 			fields: $fields,
 			immutable: $table_obj->isImmutable(),
 		);
-	}
-
-	/**
-	 * 模板方法，从数据库读取后被调用。
-	 * 实际调用时机是通过select来创建本对象时实例的 __construct() 内。
-	 * 手工new的时候不会触发。
-	 *
-	 * 可以在这里进行一些清理和格式化工作。
-	 */
-	protected function afterRead()
-	{
-	}
-
-	/**
-	 * 直接传递一组约束来进行简单 select
-	 * $constraint 是 $field => $value ，其中每个元素的值可以是：
-	 * - null： 将使用 `field` IS NULL
-	 * - 标量： 将使用 `field` = ?
-	 * - 可遍历（例如数组）： 将使用 `field` IN (?, ?, ...)
-	 *
-	 *
-	 * @param array $constraint
-	 * @param int|array|Paginator|null $paginator
-	 * @param array|null $order_by
-	 * @param bool $or $constraint中的各个字段约束之间的关系 AND 还是 OR，默认 AND
-	 * @return ResultSet|null
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function selectBy(array $constraint, null|int|array|Paginator $paginator = null,
-									?array $order_by = null, $or = false): ?ResultSet
-	{
-		if (!$constraint) {
-			throw new QueryException('selectBy need constraint ' . get_called_class());
-		}
-		$field_types = self::getTableInfo()->getFieldsType();
-		$where = [];
-		$params = [];
-		foreach ($constraint as $field => $value) {
-			if (!isset($field_types[$field])) {
-				throw new QueryException($field . ' for selectBy is invalid ' . get_called_class());
-			}
-			if ($value === null) {
-				$where[] = static::field($field, true) . ' IS NULL';
-			} elseif (is_iterable($value)) {
-				$i = 0;
-				foreach ($value as $v) {
-					$params[] = [$v, $field_types[$field]];
-					$i++;
-				}
-				$where[] = static::field($field, true) . ' IN (' . implode(', ', array_fill(0, $i, '?')) . ')';
-			} else {
-				$where[] = static::field($field, true) . ' = ?';
-				$params[] = [$value, $field_types[$field]];
-			}
-		}
-
-		$where = '(' . implode(') ' . ($or ? 'OR' : 'AND') . ' (', $where) . ')';
-		$sql = static::ss() . ' WHERE ' . $where;
-
-		$order_info = $order_by ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
-		$order_info and $sql .= static::orderByStr($order_info);
-
-		return static::select($sql, $params, $paginator);
 	}
 
 	/**
@@ -262,11 +239,11 @@ abstract class Record implements ArrayAccess
 	 */
 	final static public function field(string $field, bool $full = false, bool $enclose = true): string|null
 	{
-		if ($enclose) {
+		if($enclose){
 			$field = self::e($field);
 		}
-		if ($full) {
-			$field = self::table($enclose) . '.' . $field;
+		if($full){
+			$field = self::table($enclose).'.'.$field;
 		}
 		return $field;
 	}
@@ -282,24 +259,13 @@ abstract class Record implements ArrayAccess
 	final static public function table(bool $enclose = true): string|null
 	{
 		$table = self::getTableInfo()?->getTable();
-		if ($table === null) {
+		if($table === null){
 			return null;
 		}
-		if ($table and $enclose) {
+		if($table and $enclose){
 			$table = self::e($table);
 		}
 		return $table;
-	}
-
-	/**
-	 * 返回 simple select 语句，方便使用.注意最后是没有空格的，后面加东西的时候需要自己补上。
-	 * @return string
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static protected function ss(): string
-	{
-		return 'SELECT * FROM ' . static::table();
 	}
 
 	/**
@@ -320,7 +286,7 @@ abstract class Record implements ArrayAccess
 	static protected function orderByStr(?array $info = null): string
 	{
 		$info = $info ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
-		if (!$info) {
+		if(!$info){
 			return '';
 		}
 		array_walk($info, function (&$order, $field) {
@@ -337,95 +303,51 @@ abstract class Record implements ArrayAccess
 		return ' ORDER BY ' . implode(', ', $info);
 	}
 
+
 	/**
-	 * 尝试根据sql来select对应的record，结果进入本类实例。
-	 * 如果指定了分页器，自动取分页器当前页对应的条目。
+	 * $constraint 是 $field => $value ，其中每个元素的值可以是：
+	 * - null： 将使用 `field` IS NULL
+	 * - 标量： 将使用 `field` = ?
+	 * - 可遍历（例如数组）： 将使用 `field` IN (?, ?, ...)
 	 *
-	 * @param string $sql 查询用的SQL，应当是有返回结果集的。
-	 * @param array|null $params sql中对应的占位符所需要绑定的参数
-	 * @param int|array|Paginator|null $paginator 分页信息
-	 * @return ResultSet
+	 * Note:
+	 * 这里其实可以扩展$constraint的定义方式来支持更复杂的约束条件类型，
+	 * 例如大于、小于甚至更复杂的运算甚至递归定义，并不很困难。
+	 * 但对于比较复杂的约束条件与其设法定义一套DSL不如直接写SQL反而更加直接且高效，
+	 * 因此这里的支持复杂度到此为止。
+	 *
+	 * @param array $constraint $field => $value_info
+	 * @param bool $or 不同字段使用 AND 还是 OR 模式？默认为 AND
+	 * @return array [$where, $params],其中 $params是 [$value, $type]
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	static public function select(string $sql,
-								  ?array $params = null,
-								  null|int|array|Paginator $paginator = null): ResultSet
+	protected static function buildConstraint(array $constraint, bool $or=false): array
 	{
-		return static::con('r')->selectObjects(static::class, $sql, $params, $paginator);
-	}
-
-	/**
-	 * 取得全部条目。
-	 * 如果提供了分页器，只取分页器当前页对应结果，
-	 * 可以自动将分页器的所有条目数值设置为结果条数(有一个countAll()调用)
-	 *
-	 * @param int|array|Paginator|null $paginator 分页信息，如果是array需要 [$limit, $offset]
-	 * @param array|null $order_info 排序信息数组，不提供就使用默认的。
-	 * @param string|null $sql
-	 * @return ResultSet
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function selectAll(null|int|array|Paginator $paginator = null,
-									 ?array $order_info = null,
-									 ?string $sql = null): ResultSet
-	{
-		($paginator instanceof Paginator) and $paginator->setTotalItems(static::countAll());
-
-		$sql = $sql ?: static::ss();
-		$order_info = $order_info ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
-		$order_info and $sql .= static::orderByStr($order_info);
-
-		return static::select($sql, null, $paginator);
-	}
-
-	/**
-	 * 取得总条数信息
-	 *
-	 * @return int
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function countAll(): int
-	{
-		$sql = 'SELECT count(1) FROM ' . static::table();
-		return (int)static::selectSingleValue($sql);
-	}
-
-	/**
-	 * 取结果的第一行的第一列的结果。
-	 * 诸如 select count(*) from `t` 这样的情况使用。
-	 *
-	 * @param string $sql 需要执行的SQL语句，如果需要绑定参数的用?
-	 * @param array|null $param 参数，如果有。
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static protected function selectSingleValue(string $sql, ?array $param = null)
-	{
-		return static::con('r')->selectSingleValue($sql, $param);
-	}
-
-	/**
-	 * 按指定主键尝试取条目。有则直接返回对应条目，无返回null
-	 *
-	 * 参数写法：直接按照 pk 字段的定义循序写，或者用按照 pk 字段的名称用 named 参数。
-	 * 调用方自行保证参数信息正确。
-	 *
-	 * @param mixed ...$values 主键值，按照定义顺序。
-	 * @return static|null
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function selectByPk(mixed ...$values): ?static
-	{
-		if (!count($values)) {
-			return null;
+		$field_types = self::getTableInfo()->getFieldsType();
+		$where = [];
+		$params = [];
+		foreach ($constraint as $field => $value) {
+			if (!isset($field_types[$field])) {
+				throw new QueryException('Field "' . $field . '" is invalid ' . get_called_class());
+			}
+			if ($value === null) {
+				$where[] = static::field($field, true) . ' IS NULL';
+			} elseif (is_iterable($value)) {
+				$i = 0;
+				foreach ($value as $v) {
+					$params[] = [$v, $field_types[$field]];
+					$i++;
+				}
+				$where[] = static::field($field, true) . ' IN (' . implode(', ', array_fill(0, $i, '?')) . ')';
+			} else {
+				$where[] = static::field($field, true) . ' = ?';
+				$params[] = [$value, $field_types[$field]];
+			}
 		}
-		list($where, $params) = self::buildPkConstraint($values);
-		$sql = static::ss() . ' WHERE ' . $where;
-		return static::select($sql, $params)->firstRow();
+
+		$where = '(' . implode(') ' . ($or ? 'OR' : 'AND') . ' (', $where) . ')';
+		return array($where, $params);
 	}
 
 	/**
@@ -440,89 +362,7 @@ abstract class Record implements ArrayAccess
 		if (!$pk) {
 			throw new QueryException('No PK info. ' . get_called_class());
 		}
-
-		$where = [];
-		$params = [];
-		foreach ($pk as $index => $field) {
-			$value = $values[$field] ?? $values[$index] ?? null;
-			if ($value === null) {
-				$where[] = static::field($field, true) . ' IS NULL';
-			} else {
-				$where[] = static::field($field, true) . ' = ?';
-				$params[] = $value;
-			}
-		}
-
-		$where = implode(' AND ', $where);
-
-		return [$where, $params];
-	}
-
-	/**
-	 * 简单封装事务处理，从而无需手写try/catch和beginTransaction/commit/rollback等。
-	 * 有如下默认约定：
-	 * 1. con使用w模式。
-	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
-	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
-	 *
-	 * @param callback $fn
-	 * @param mixed ...$args
-	 * @return mixed
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function doTransaction(callable $fn, mixed ...$args): mixed
-	{
-		$con = static::con('w'); //事务通常有write需求，默认用w模式。
-		return $con->doTransaction($fn, ...$args);
-	}
-
-	/**
-	 * 删除。按照pk来进行。
-	 *
-	 * @param mixed ...$values
-	 * @return int|false
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static public function deleteByPk(mixed ...$values): int|false
-	{
-		if (self::getTableInfo()?->isImmutable()) {
-			throw new QueryException('this table is immutable.');
-		}
-		if (!count($values)) {
-			return 0;
-		}
-		list($where, $params) = self::buildPkConstraint($values);
-		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . $where;
-		return static::execute($sql, $params);
-	}
-
-	/**
-	 * 执行无结果集的sql， insert,update之类。
-	 * 返回影响的行数，如果查询失败返回false 。
-	 *
-	 * @param string $sql
-	 * @param array|null $param
-	 * @return int|false
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	static protected function execute(string $sql, ?array $param = null): int|false
-	{
-		return static::con('w')->execute($sql, $param);
-	}
-
-	/**
-	 * 和 e()是一样的，优先用e
-	 * @param string $identifier
-	 * @return string
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	protected static function enclose(string $identifier): string
-	{
-		return static::e($identifier);
+		return self::buildConstraint(array_combine($pk, $values));
 	}
 
 	/**
@@ -537,6 +377,18 @@ abstract class Record implements ArrayAccess
 	protected static function e(string $s): string
 	{
 		return static::con('r')->enclose($s);
+	}
+
+	/**
+	 * 和 e()是一样的，优先用e
+	 * @param string $identifier
+	 * @return string
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	protected static function enclose(string $identifier): string
+	{
+		return static::e($identifier);
 	}
 
 	/**
@@ -564,64 +416,6 @@ abstract class Record implements ArrayAccess
 	}
 
 	/**
-	 * 取得PK字段值
-	 * 字段 => 值 数组。
-	 *
-	 * @return array
-	 * @throws Exception
-	 */
-	public function getPkValues(): array
-	{
-		$array = [];
-		foreach (self::getTableInfo()->getPrimaryKey() as $field) {
-			$array[$field] = $this[$field];
-		}
-		return $array;
-	}
-
-	/**
-	 * insert新记录，会自动忽略 auto inc 和 read only 字段。
-	 *
-	 * @return boolean 是否有更新
-	 * @throws ConnectionException
-	 * @throws Exception
-	 */
-	public function insert(): bool
-	{
-		// 所有需要指定值的字段
-		$f = $fields = self::getTableInfo()?->getWriteFields();
-		if (!$fields) {
-			throw new QueryException('Insert need at least one col.');
-		}
-		$this->beforeWrite();
-
-		array_walk($f, fn(&$x) => $x = self::field($x));
-		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $f) . ') VALUES (' . implode(', ', array_fill(1, count($f), '?')) . ')';
-		$stmt = static::con('w')->prepare($sql);
-		$type = self::getTableInfo()?->getFieldsType();
-		$i = 1;
-		foreach ($fields as $field) {
-			$stmt->bindValue($i, $this[$field], $type[$field]);
-			$i++;
-		}
-		$result = $stmt->execute();
-		$auto_inc = self::getTableInfo()?->getAutoInc();
-		if ($result && $auto_inc) {
-			$this->{$auto_inc} = self::typeCast(static::con('w')->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
-		}
-		return (bool)$result;
-	}
-
-	/**
-	 * 模板方法，在insert()与update()中写数据库之前被调用。
-	 *
-	 * 可以在这里进行一些清理工作
-	 */
-	protected function beforeWrite()
-	{
-	}
-
-	/**
 	 * 将值按照给定类型进行转换。保留null
 	 *
 	 * @param mixed $value 需要转换的值
@@ -643,21 +437,241 @@ abstract class Record implements ArrayAccess
 	}
 
 	/**
-	 * delete之。根据本对象内的 pk 或者 auto inc来决定标准。
-	 *
-	 * @return boolean 是否有删除
+	 * 返回 simple select 语句，方便使用.注意最后是没有空格的，后面加东西的时候需要自己补上。
+	 * @return string
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	public function delete(): bool
+	static protected function ss() : string
 	{
-		if (self::getTableInfo()?->isImmutable()) {
+		return 'SELECT * FROM ' . static::table();
+	}
+
+	/**
+	 * 尝试根据sql来select对应的record，结果进入本类实例。
+	 * 如果指定了分页器，自动取分页器当前页对应的条目。
+	 *
+	 * @param string $sql 查询用的SQL，应当是有返回结果集的。
+	 * @param array|null $params sql中对应的占位符所需要绑定的参数
+	 * @param int|array|Paginator|null $paginator 分页信息
+	 * @param bool|null $named
+	 * @return ResultSet
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function select(string $sql,
+								  ?array $params = null,
+								  null|int|array|Paginator $paginator = null,
+								  ?bool $named = null): ResultSet
+	{
+		return static::con('r')->selectObjects(static::class, $sql, $params, $paginator,named:$named);
+	}
+
+	/**
+	 * 直接传递一组约束来进行简单 select
+	 *
+	 * @param array $constraint
+	 * @param int|array|Paginator|null $paginator
+	 * @param array|null $order_by
+	 * @param bool $or $constraint中的各个字段约束之间的关系 AND 还是 OR，默认 AND
+	 * @return ResultSet|null
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function selectBy(array $constraint, null|int|array|Paginator $paginator = null,
+									?array $order_by = null, $or = false): ?ResultSet
+	{
+		if(!$constraint){
+			throw new QueryException('selectBy need constraint ' . get_called_class());
+		}
+		list($where, $params) = self::buildConstraint($constraint, $or);
+		$sql = static::ss() . ' WHERE ' . $where;
+
+		$order_info = $order_by ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
+		$order_info and $sql .= static::orderByStr($order_info);
+
+		return static::select($sql, $params, $paginator, named:false);
+	}
+
+	/**
+	 * 取得全部条目。
+	 * 如果提供了分页器，只取分页器当前页对应结果，
+	 * 可以自动将分页器的所有条目数值设置为结果条数(有一个countAll()调用)
+	 *
+	 * @param int|array|Paginator|null $paginator 分页信息，如果是array需要 [$limit, $offset]
+	 * @param array|null $order_info 排序信息数组，不提供就使用默认的。
+	 * @param string|null $sql
+	 * @return ResultSet
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function selectAll(null|int|array|Paginator $paginator = null,
+									 ?array $order_info = null,
+									 ?string $sql = null): ResultSet
+	{
+		($paginator instanceof Paginator) and $paginator->setTotalItems(static::countAll());
+
+		$sql = $sql ?: static::ss();
+		$order_info = $order_info ?: self::getTableInfo()?->getDefaultOrderBy() ?: null;
+		$order_info and $sql .= static::orderByStr($order_info);
+
+		return static::select($sql, paginator:$paginator, named:false);
+	}
+
+	/**
+	 * 取得总条数信息
+	 *
+	 * @return int
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function countAll(): int
+	{
+		$sql = 'SELECT count(1) FROM ' . static::table();
+		return (int)static::selectSingleValue($sql);
+	}
+
+	/**
+	 * 取结果的第一行的第一列的结果。
+	 * 诸如 select count(*) from `t` 这样的情况使用。
+	 *
+	 * @param string $sql 需要执行的SQL语句，如果需要绑定参数的用?
+	 * @param array|null $param 参数，如果有。
+	 * @param bool|null $named
+	 * @return string|null
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static protected function selectSingleValue(string $sql, ?array $param = null, ?bool $named = null):?string
+	{
+		return static::con('r')->selectSingleValue($sql, $param, $named);
+	}
+
+	/**
+	 * 按指定主键尝试取条目。有则直接返回对应条目，无返回null
+	 *
+	 * 参数写法：直接按照 pk 字段的定义循序写，或者用按照 pk 字段的名称用 named 参数。
+	 * 调用方自行保证参数信息正确。
+	 *
+	 * @param mixed ...$values 主键值，按照定义顺序。
+	 * @return static|null
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function selectByPk(mixed ...$values): ?static
+	{
+		if(!count($values)){
+			return null;
+		}
+		list($where, $params) = self::buildPkConstraint($values);
+		$sql = static::ss(). ' WHERE ' . $where;
+		return static::select($sql, $params, named:false)->firstRow();
+	}
+
+
+	/**
+	 * 执行无结果集的sql， insert,update之类。
+	 * 返回影响的行数，如果查询失败会抛出exception 。
+	 *
+	 * @param string $sql
+	 * @param array|null $param
+	 * @param bool|null $named
+	 * @return int
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static protected function execute(string $sql, ?array $param = null, ?bool $named = null):int
+	{
+		return static::con('w')->execute($sql, $param, $named);
+	}
+
+	/**
+	 * 简单封装事务处理，从而无需手写try/catch和beginTransaction/commit/rollback等。
+	 * 有如下默认约定：
+	 * 1. con使用w模式。
+	 * 2. 执行的fn中有问题需要抛出\PDOException，通常推荐抛出\mFramework\Database\QueryException。这样会触发rollBack。
+	 * 3. 执行成功时返回的是$fn的return值；rollBack之后返回的是false。因此$fn不推荐返回false以免混淆。
+	 *
+	 * @param callback $fn
+	 * @param mixed ...$args
+	 * @return mixed
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function doTransaction(callable $fn, mixed ...$args): mixed
+	{
+		return static::con('w')->doTransaction($fn, ...$args);
+	}
+
+	/**
+	 * insert新记录，会自动忽略 auto inc 和 read only 字段。
+	 *
+	 * @return int 更新行数
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	public function insert(): int
+	{
+		// 所有需要指定值的字段
+		$info = self::getTableInfo();
+		$f = $fields = $info->getWriteFields();
+		if (!$fields) {
+			throw new QueryException('Insert need at least one col.');
+		}
+		$this->beforeWrite();
+
+		array_walk($f, fn(&$x) => $x = self::field($x));
+		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $f) . ') VALUES (' . implode(', ', array_fill(1, count($f), '?')) . ')';
+
+		$con = static::con('w');
+		$result = $con->execute($sql, $this->getValuesArray(...$fields), named:false);
+		$auto_inc = self::getTableInfo()?->getAutoInc();
+		if ($result && $auto_inc) {
+			$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $info->getFieldsType()[$auto_inc] ?? self::DATATYPE_STRING);
+		}
+		return $result;
+	}
+
+	/**
+	 * 删除。按照pk来进行。
+	 *
+	 * @param mixed ...$values
+	 * @return int 删除的行数
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	static public function deleteByPk(mixed ...$values): int
+	{
+		if(self::getTableInfo()?->isImmutable()){
 			throw new QueryException('this table is immutable.');
 		}
-		$fields = self::getTableInfo()?->getPk() ?? (array)self::getTableInfo()?->getAutoInc();
+		if(!count($values)){
+			return 0;
+		}
+
+		list($where, $params) = self::buildPkConstraint($values);
+		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . $where;
+		return static::execute($sql,$params,named:false);
+	}
+
+	/**
+	 * delete之。根据本对象内的 pk 或者 auto inc来决定标准。
+	 *
+	 * @return int|false 删除结果
+	 * @throws ConnectionException
+	 * @throws Exception
+	 */
+	public function delete(): int|false
+	{
+		$info =self::getTableInfo();
+		if($info->isImmutable()){
+			throw new QueryException('this table is immutable.');
+		}
+		$fields = $info->getPk() ?? (array)$info->getAutoInc();
 		if (!$fields) {
 			throw new QueryException('delete need a col for WHERE.');
 		}
+		$types = $info->getFieldsType();
 		$where = [];
 		$params = null;
 		foreach ($fields as $field) {
@@ -665,12 +679,13 @@ abstract class Record implements ArrayAccess
 				$where[] = self::field($field) . ' IS NULL';
 			} else {
 				$where[] = self::field($field) . ' = ?';
-				$params[] = $this[$field];
+				$params[] = [$this[$field], $types[$field]];
 			}
 		}
 		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . implode(' AND ', $where);
-		return (bool)static::execute($sql, $params);
+		return self::execute($sql, $params, named:false);
 	}
+
 
 
 	/**
@@ -679,14 +694,14 @@ abstract class Record implements ArrayAccess
 	 * 除了指定排除字段，还会排除掉更新 pk 和 ignore on write 字段。
 	 *
 	 * @param string ...$fields 不更新那些字段？允许多个，null 为默认值。
-	 * @return boolean 是否有更新
+	 * @return int 是否有更新
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	public function updateWithout(string ...$fields): bool
+	public function updateWithout(string ...$fields): int
 	{
 		// 计算要更新哪些字段
-		$update_fields = array_diff(self::getTableInfo()->getWriteFields(), $fields);
+		$update_fields = array_diff( self::getTableInfo()->getWriteFields(), $fields);
 		return $this->update(...$update_fields);
 	}
 
@@ -696,27 +711,27 @@ abstract class Record implements ArrayAccess
 	 * 注意：如果有传入参数，则本方法实际更新的字段完全依据参数传递，不考虑 auto inc 和 readonly 属性。
 	 *
 	 * @param string ...$fields 要更新那些字段？默认为空，即自动计算。
-	 * @return bool 结果
+	 * @return int 结果
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	public function update(string ...$fields): bool
+	public function update(string ...$fields): int
 	{
-		if (self::getTableInfo()?->isImmutable()) {
+		if(self::getTableInfo()?->isImmutable()){
 			throw new QueryException('this table is immutable.');
 		}
 		$info = self::getTableInfo();
-		if (!$fields) { //自动计算需要更新的字段
+		if(!$fields){ //自动计算需要更新的字段
 			$fields = $info->getWriteFields();
-			//计算diff，去掉不要的部分：
-			foreach ($fields as $key => $field) {
-				if ($this->snap[$field] === $this[$field]) {
+			//计算diff，去掉内容相同的字段，节约开销
+			foreach ($fields as $key => $field){
+				if($this->snap[$field] === $this[$field]){
 					unset($fields[$key]);
 				}
 			}
 		}
 		if (!$fields) {
-			return true; //没有字段需要更新，直接返回。但并不是错误。
+			throw new QueryException('Update need a col to update.');
 		}
 
 		// 计算where的依据
@@ -727,35 +742,27 @@ abstract class Record implements ArrayAccess
 
 		$this->beforeWrite();
 
+		$type = self::getTableInfo()?->getFieldsType();
 		$set = array();
 		$where = array();
 		$params = [];
 		foreach ($fields as $field) {
 			$set[] = self::field($field) . ' = ?';
-			$params[] = $field;
+			$params[] = [$this[$field], $type[$field]];
 		}
 		foreach ($by_fields as $field) {
 			if ($this[$field] === null) {
 				$where[] = self::field($field) . ' IS NULL';
 			} else {
 				$where[] = self::field($field) . ' = ?';
-				$params[] = $field;
+				$params[] = [$this[$field], $type[$field]];
 			}
 		}
 		$sql = 'UPDATE ' . static::table() . ' SET ' . implode(', ', $set) . ' WHERE ' . implode(' AND ', $where);
-		$stmt = static::con('w')->prepare($sql);
-		$type = self::getTableInfo()?->getFieldsType();
-		$i = 1;
-		foreach ($params as $field) {
-			$stmt->bindValue($i, $this[$field], $type[$field]);
-			$i++;
-		}
-		if ($stmt->execute()) {
+		if($result = self::execute($sql, $params, named:false)){
 			$this->snap = $this->getValuesArray(); //成功了要更新一下快照。
-			return true;
-		} else {
-			return false;
 		}
+		return $result;
 	}
 
 	public function offsetExists($offset): bool
@@ -768,37 +775,47 @@ abstract class Record implements ArrayAccess
 		return $this->{$offset};
 	}
 
-	public function offsetUnset($offset)
-	{
+	public function offsetUnset($offset){
 		unset($this->{$offset});
+	}
+
+	public function offsetSet($offset, $value){
+		$this->{$offset} = $value;
 	}
 
 	/**
 	 * 一次性设置多个字段，会过滤并非有效字段的内容。
 	 *
 	 * @param iterable $values
+	 * @param bool $include_readonly_fields
 	 * @return $this
 	 * @throws Exception
 	 */
-	public function setValues(iterable $values, $include_readonly_fields = false): static
+	public function setValues(iterable $values, $include_readonly_fields = false) : static
 	{
-		if ($include_readonly_fields) {
+		if($include_readonly_fields){
 			$fields = self::getTableInfo()->getFields();
-		} else {
+		}
+		else{
 			$fields = self::getTableInfo()->getWriteFields();
 		}
 		$fields = array_flip($fields);
-		foreach ($values as $key => $value) {
-			if (isset($fields[$key])) {
+		foreach($values as $key => $value){
+			if(isset($fields[$key])){
 				$this->offsetSet($key, $value);
 			}
 		}
 		return $this;
 	}
 
-	public function offsetSet($offset, $value)
+	/**
+	 * 读取数据表数据快照。
+	 * 快照来自于 fetch, update
+	 * @return array|null
+	 */
+	public function getSnap(): ?array
 	{
-		$this->{$offset} = $value;
+		return $this->snap;
 	}
 
 }

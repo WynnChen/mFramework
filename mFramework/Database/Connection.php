@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace mFramework\Database;
 
-use \mFramework\Utility\Paginator;
+use mFramework\Utility\Paginator;
 use PDO;
 use PDOException;
+use PDOStatement;
 
 /**
  * 指向具体单个连接的封装，以PDO为基础。
@@ -127,6 +128,47 @@ abstract class Connection extends PDO
 	 */
 	abstract public function enclose(string $identifier): string;
 
+	static protected function bindParams(PDOStatement $stmt, array $params, ?bool $named = null): PDOStatement
+	{
+		if($named === null){
+			$named = is_string(array_key_first($params)); //尝试自动判定使用 :name 还是 ?
+		}
+		$i = 1;
+		foreach($params as $key => $param){
+			if(!$named){
+				$key = $i;
+				$i++;
+			}
+			if(is_array($param)){
+				$stmt->bindValue($key, ...$param);
+			}
+			else{
+				$stmt->bindValue($key, $param);
+			}
+		}
+		return $stmt;
+	}
+
+	/**
+	 * 在这个connection上prepare sql语句，然后绑定参数，然后$stmt->execute()，之后返回这个$stmt.
+	 *
+	 * $params数组的值可以是 $value 或者 [$value, $type]。
+	 *
+	 * $named用于指定绑定使用 :name 还是 ? 模式，如果传递null那么就根据$params的第一个key的类型是string还是int自动判断。
+	 *
+	 * @param string $sql $sql
+	 * @param array|null $params 参数信息
+	 * @param bool|null $named named？
+	 * @return PDOStatement
+	 */
+	public function stmtExecute(string $sql, ?array $params = null, ?bool $named = null): PDOStatement
+	{
+		$stmt = $this->prepare($sql);
+		$params and self::bindParams($stmt, $params, $named);
+		$stmt->execute();
+		return $stmt;
+	}
+
 	/**
 	 * select，结果进入特定类的对象实例。
 	 *
@@ -139,15 +181,18 @@ abstract class Connection extends PDO
 	 * @param string $className 目标类名，必须继承自 Record
 	 * @param string $sql SQL语句，应当为有返回数据集的，并使用绑定占位符。
 	 * @param array|null $params SQL语句对应的待绑定参数，具体格式与使用的绑定占位符格式有关
-	 * @param Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
+	 * @param int|array|Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
 	 * @param array|null $construct_args 目标类的额外构造器参数。必然会有的一个参数是 ['fetch'=>true]
+	 * @param bool|null $named 强行指定占位符是 :name 还是 ?
 	 * @return ResultSet
 	 */
-	public function selectObjects(string $className, string $sql, ?array $params = null, null|int|array|Paginator $paginator = null, ?array $construct_args = null): ResultSet
+	public function selectObjects(string $className, string $sql, ?array $params = null, null|int|array|Paginator $paginator = null, ?array $construct_args = null, ?bool $named = null): ResultSet
 	{
 		try {
 			$params = $params ?? [];
-			$named = is_string(array_key_first($params)); //使用 :name 还是 ?
+			if($named === null){
+				$named = is_string(array_key_first($params)); //使用 :name 还是 ?
+			}
 			if ($paginator) {
 				$sql .= $named ? ' LIMIT :mfLimitStart, :mfLimitCount' : ' LIMIT ?, ?';
 				if(is_int($paginator)){
@@ -158,41 +203,24 @@ abstract class Connection extends PDO
 						throw new QueryException('limit 信息数组数量不正确。');
 					}
 					list($limit, $offset) = $paginator;
-				}
-				else{
+				}else{
 					$limit = $paginator->getItemsPerPage();
 					$offset = ($paginator->getCurrentPage() - 1) * $paginator->getItemsPerPage();
 				}
+
 				if($named){
 					$params[':mfLimitStart'] = [$offset, self::PARAM_INT];
 					$params[':mfLimitCount'] = [$limit, self::PARAM_INT];
-				}
-				else{
+				}else{
 					$params[] = [$offset, self::PARAM_INT];
 					$params[] = [$limit, self::PARAM_INT];
 
 				}
 			}
 
-
-			$stmt = $this->prepare($sql);
-			$i = 1;
-			foreach($params as $key => $param){
-				if(!$named){
-					$key = $i;
-					$i++;
-				}
-				if(is_array($param)){
-					$stmt->bindValue($key, ...$param);
-				}
-				else{
-					$stmt->bindValue($key, $param);
-				}
-			}
-			$stmt->execute();
-			$mode = self::FETCH_CLASS;
 			$construct_args['fetch'] = true;
-			$stmt->setFetchMode($mode, $className, $construct_args);
+			$stmt = $this->stmtExecute($sql, $params, $named);
+			$stmt->setFetchMode(self::FETCH_CLASS, $className, $construct_args);
 			return new ResultSet($stmt);
 		} catch (PDOException $e) {
 			throw new QueryException('查询数据库出错。', 1, $e);
@@ -204,12 +232,13 @@ abstract class Connection extends PDO
 	 *
 	 * @param string $sql SQL语句，应当为有返回数据集的，并使用绑定占位符。
 	 * @param array|null $params SQL语句对应的待绑定参数，具体格式与使用的绑定占位符格式有关
-	 * @param Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
+	 * @param int|array|Paginator|null $paginator 分页器，如果提供的话会生成对应的limit限制，只取分页器当前页所对应的条目
+	 * @param bool|null $named
 	 * @return ResultSet
 	 */
-	public function select(string $sql, ?array $params = null, null|int|array|Paginator $paginator = null): ResultSet
+	public function select(string $sql, ?array $params = null, null|int|array|Paginator $paginator = null, ?bool $named = null): ResultSet
 	{
-		return $this->selectObjects('\mFramework\Database\Row', $sql, $params, $paginator);
+		return $this->selectObjects(Row::class , $sql, $params, $paginator, named:$named);
 	}
 
 	/**
@@ -219,14 +248,14 @@ abstract class Connection extends PDO
 	 *
 	 * @param string $sql
 	 * @param array|null $params
+	 * @param bool|null $named
 	 * @return string|null
 	 */
-	public function selectSingleValue(string $sql, ?array $params = null): string|null
+	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|null
 	{
 		try {
-			$stmt = $this->prepare($sql);
-			$stmt->execute($params);
-			return $stmt->fetchColumn()?:null;
+			$stmt = $this->stmtExecute($sql, $params, $named);
+			return $stmt->fetchColumn() ?: null;
 		} catch (PDOException $e) {
 			throw new QueryException('查询数据库出错。', 2, $e);
 		}
@@ -238,13 +267,13 @@ abstract class Connection extends PDO
 	 *
 	 * @param string $sql
 	 * @param array|null $params
-	 * @return int|false
+	 * @param bool|null $named
+	 * @return int
 	 */
-	public function execute(string $sql, ?array $params = null): int|false
+	public function execute(string $sql, ?array $params = null, ?bool $named = null): int
 	{
 		try {
-			$stmt = $this->prepare($sql);
-			$stmt->execute($params);
+			$stmt = $this->stmtExecute($sql, $params, $named);
 			return $stmt->rowCount();
 		} catch (PDOException $e) {
 			throw new QueryException('更新数据库出错。', 3, $e);
