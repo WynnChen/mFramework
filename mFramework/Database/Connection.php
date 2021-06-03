@@ -190,7 +190,7 @@ abstract class Connection extends PDO
 				}
 			}
 			$stmt->execute();
-			$mode = self::FETCH_CLASS | self::FETCH_PROPS_LATE;
+			$mode = self::FETCH_CLASS;
 			$construct_args['fetch'] = true;
 			$stmt->setFetchMode($mode, $className, $construct_args);
 			return new ResultSet($stmt);
