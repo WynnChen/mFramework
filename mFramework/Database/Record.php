@@ -731,7 +731,7 @@ abstract class Record implements ArrayAccess
 			}
 		}
 		if (!$fields) {
-			throw new QueryException('Update need a col to update.');
+			return 0; //不需要更新，直接返回0。
 		}
 
 		// 计算where的依据
