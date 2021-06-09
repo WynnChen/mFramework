@@ -623,8 +623,13 @@ abstract class Record implements ArrayAccess
 		array_walk($f, fn(&$x) => $x = self::field($x));
 		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $f) . ') VALUES (' . implode(', ', array_fill(1, count($f), '?')) . ')';
 
+		$type = $info->getFieldsType();
+		$params = [];
+		foreach($fields as $field){
+			$params[$field] = [$this[$field], $type[$field]];
+		}
 		$con = static::con('w');
-		$result = $con->execute($sql, $this->getValuesArray(...$fields), named:false);
+		$result = $con->execute($sql, $params, named:false);
 		$auto_inc = self::getTableInfo()?->getAutoInc();
 		if ($result && $auto_inc) {
 			$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $info->getFieldsType()[$auto_inc] ?? self::DATATYPE_STRING);
