@@ -623,16 +623,14 @@ abstract class Record implements ArrayAccess
 		array_walk($f, fn(&$x) => $x = self::field($x));
 		$sql = 'INSERT INTO ' . static::table() . ' (' . implode(', ', $f) . ') VALUES (' . implode(', ', array_fill(1, count($f), '?')) . ')';
 
+		//不指定类型会导致bool值出问题。（不指定则视为string，bool false 转换为 string 为 ""， 而mysql使用tinyint来模拟bool，""对于tinyint来说是个非法值）
 		$type = $info->getFieldsType();
-		$params = [];
-		foreach($fields as $field){
-			$params[$field] = [$this[$field], $type[$field]];
-		}
+		array_walk($fields, fn(&$x) => $x = [$this[$x], $type[$x]]);
 		$con = static::con('w');
-		$result = $con->execute($sql, $params, named:false);
+		$result = $con->execute($sql, $fields, named:false);
 		$auto_inc = self::getTableInfo()?->getAutoInc();
 		if ($result && $auto_inc) {
-			$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $info->getFieldsType()[$auto_inc] ?? self::DATATYPE_STRING);
+			$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
 		}
 		return $result;
 	}
