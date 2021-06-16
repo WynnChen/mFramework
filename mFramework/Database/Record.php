@@ -629,8 +629,12 @@ abstract class Record implements ArrayAccess
 		$con = static::con('w');
 		$result = $con->execute($sql, $fields, named:false);
 		$auto_inc = self::getTableInfo()?->getAutoInc();
-		if ($result && $auto_inc) {
-			$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
+		if($result){
+			//更新snap：
+			$this->snap = $this->getValuesArray();
+			if ($auto_inc) {
+				$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
+			}
 		}
 		return $result;
 	}
@@ -726,10 +730,12 @@ abstract class Record implements ArrayAccess
 		$info = self::getTableInfo();
 		if(!$fields){ //自动计算需要更新的字段
 			$fields = $info->getWriteFields();
-			//计算diff，去掉内容相同的字段，节约开销
-			foreach ($fields as $key => $field){
-				if($this->snap[$field] === $this[$field]){
-					unset($fields[$key]);
+			if($this->snap){
+				//计算diff，去掉内容相同的字段，节约开销
+				foreach ($fields as $key => $field){
+					if($this->snap[$field] === $this[$field]){
+						unset($fields[$key]);
+					}
 				}
 			}
 		}
