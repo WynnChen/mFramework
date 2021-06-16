@@ -538,11 +538,11 @@ abstract class Record implements ArrayAccess
 	 * @param string $sql 需要执行的SQL语句，如果需要绑定参数的用?
 	 * @param array|null $param 参数，如果有。
 	 * @param bool|null $named
-	 * @return string|null
+	 * @return string|false
 	 * @throws ConnectionException
 	 * @throws Exception
 	 */
-	static protected function selectSingleValue(string $sql, ?array $param = null, ?bool $named = null):?string
+	static protected function selectSingleValue(string $sql, ?array $param = null, ?bool $named = null):string|false
 	{
 		return static::con('r')->selectSingleValue($sql, $param, $named);
 	}

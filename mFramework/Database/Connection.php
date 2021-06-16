@@ -251,11 +251,11 @@ abstract class Connection extends PDO
 	 * @param bool|null $named
 	 * @return string|null
 	 */
-	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|null
+	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|false
 	{
 		try {
 			$stmt = $this->stmtExecute($sql, $params, $named);
-			return $stmt->fetchColumn() ?: null;
+			return $stmt->fetchColumn();
 		} catch (PDOException $e) {
 			throw new QueryException('查询数据库出错。', 2, $e);
 		}

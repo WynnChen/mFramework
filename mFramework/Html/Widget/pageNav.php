@@ -28,7 +28,7 @@ class pageNav
 		// 先确定范围内页面
 		$start = $paginator->getCurrentPage() - $visibleRange;
 		$end = $paginator->getCurrentPage() + $visibleRange;
-		
+
 		// 端点修正:
 		if ($start < 1) {
 			$start = 1;
