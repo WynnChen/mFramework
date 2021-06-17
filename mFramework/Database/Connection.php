@@ -251,7 +251,7 @@ abstract class Connection extends PDO
 	 * @param bool|null $named
 	 * @return string|null
 	 */
-	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|false
+	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|false|null
 	{
 		try {
 			$stmt = $this->stmtExecute($sql, $params, $named);
