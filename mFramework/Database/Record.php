@@ -628,13 +628,15 @@ abstract class Record implements ArrayAccess
 		array_walk($fields, fn(&$x) => $x = [$this[$x], $type[$x]]);
 		$con = static::con('w');
 		$result = $con->execute($sql, $fields, named:false);
-		$auto_inc = self::getTableInfo()?->getAutoInc();
 		if($result){
-			//更新snap：
-			$this->snap = $this->getValuesArray();
+			//先处理autoinc
+			$auto_inc = self::getTableInfo()?->getAutoInc();
 			if ($auto_inc) {
 				$this->{$auto_inc} = self::typeCast($con->lastInsertId(), $type[$auto_inc] ?? self::DATATYPE_STRING);
 			}
+			//更新snap。这个要后做，才能把autoinc的内容同步过来。
+			$this->snap = $this->getValuesArray();
+
 		}
 		return $result;
 	}
