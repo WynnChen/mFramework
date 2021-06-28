@@ -41,4 +41,21 @@ class Func
 		}
 		return '0.0.0.0';
 	}
+
+	public static function propertyGet($obj, $prop)
+	{
+		return $obj->{$prop};
+	}
+	public static function propertyExists($obj, $prop)
+	{
+		return isset($obj->{$prop});
+	}
+	public static function propertyUnset($obj, $prop)
+	{
+		unset($obj->{$prop});
+	}
+	public static function propertySet($obj, $prop, $value)
+	{
+		$obj->{$prop} = $value;
+	}
 }

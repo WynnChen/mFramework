@@ -6,6 +6,7 @@ namespace mFramework\Database;
 use ArrayAccess;
 use mFramework\Database\Attribute\Field;
 use mFramework\Database\Attribute\Table;
+use mFramework\Func;
 use mFramework\Utility\Paginator;
 use PDO;
 use ReflectionClass;
@@ -35,6 +36,8 @@ use ReflectionNamedType;
  *    ...
  * }
  *
+ * 支持 array access，但仅限于public属性（即使在可以访问private/protected的类内部）
+ *
  *
  * @see Table
  * @see Field
@@ -48,12 +51,6 @@ abstract class Record implements ArrayAccess
 	const DATATYPE_BOOL = PDO::PARAM_BOOL;
 	const DATATYPE_INT = PDO::PARAM_INT;
 	const DATATYPE_FLOAT = PDO::PARAM_STR;
-
-	/**
-	 * 缓存记录所有子类表的表信息
-	 * @var array TableInfo[]
-	 */
-	static private array $tableInfo = [];
 
 	/**
 	 * 如果是 fetch 而来的，那么这里记录着fetch得到的值，用于update时做diff判断
@@ -82,6 +79,8 @@ abstract class Record implements ArrayAccess
 	/**
 	 * 取得字段值数组。
 	 *
+	 * 注意这是根据数据库表的字段定义来取的，即标记了#[Field]的属性，即使protected/private也会取。
+	 *
 	 * @param string ...$fields 需要的字段，如果不写就全部。注意只有数据库表字段有效。
 	 * @return array
 	 * @throws Exception
@@ -94,7 +93,7 @@ abstract class Record implements ArrayAccess
 		}
 		$array = array();
 		foreach ($f as $field) {
-			$array[$field] = $this[$field];
+			$array[$field] = $this->{$field};
 		}
 		return $array;
 	}
@@ -110,7 +109,7 @@ abstract class Record implements ArrayAccess
 	{
 		$array = [];
 		foreach (self::getTableInfo()->getPrimaryKey() as $field) {
-			$array[$field] = $this[$field];
+			$array[$field] = $this->{$field};
 		}
 		return $array;
 	}
@@ -143,88 +142,7 @@ abstract class Record implements ArrayAccess
 	 */
 	final static public function getTableInfo(): ?TableInfo
 	{
-		return self::$tableInfo[static::class] ?? self::$tableInfo[static::class] = static::setUp();
-	}
-
-	/**
-	 * 本类的子类必须通过 attributes 来配置数据库表相关信息。
-	 *
-	 * @return TableInfo|null
-	 * @throws Exception
-	 */
-	final static protected function setUp(): ?TableInfo
-	{
-		//class attributes 分析,表相关属性
-		$reflection = new ReflectionClass(static::class);
-		$attributes = $reflection->getAttributes(Table::class);
-		if(!$attributes){
-			//没有表信息，可能是继承的，找父类：
-			$reflection = $reflection->getParentClass();
-			if(!$reflection){//没有父类了
-				throw new Exception(static::class.' 缺乏数据库属性配置信息。');
-			}
-			return $reflection->getName()::getTableInfo(); //用父类的信息
-		}
-		/** @var Table $table_obj */
-		$table_obj = $attributes[0]->newInstance(); //携带着表的几个属性
-
-		// properties attributes 分析，字段属性
-		$fields = [];
-		$fields_type = [];
-		$pk = [];
-		$auto_inc = null;
-		$ignore_on_write = [];
-		$properties = $reflection->getProperties();
-		foreach($properties as $property) {
-			if ($property->isStatic()) {
-				continue; //静态属性不需要管
-			}
-			$attributes = $property->getAttributes(Field::class);
-			if (!$attributes) {
-				continue; //没有 "Field" attribute 的再见。
-			}
-			if(!$property->hasDefaultValue()){
-				throw new Exception('字段属性 "'.static::class.'->'.$property->getName().'" 必须有默认值（可以是null）。');
-			}
-			/** @var Field $field */
-			$field = $attributes[0]->newInstance(); //携带flag信息
-			//字段名
-			$fields[] = $name = $property->getName(); //使用变量名
-			//字段类型定义
-			$type = $property->getType();
-			if ($type instanceof ReflectionNamedType) {
-				$type = match (strtolower($type->getName())) {
-					'int' => Record::DATATYPE_INT,
-					'float' => Record::DATATYPE_FLOAT,
-					'bool' => Record::DATATYPE_BOOL,
-					default => Record::DATATYPE_STRING, //其他统统按string处理。
-				};
-			} else { //没有类型信息或 union type也都按照string处理。
-				$type = Record::DATATYPE_STRING;
-			}
-			$fields_type[$name] = $type; //写入字段定义数组。
-			if($field->isPk()){
-				$pk[] = $name;
-			}
-			if($field->isAutoInc()){
-				$auto_inc = $name;
-				$ignore_on_write[] = $name; //auto inc 的也就不能写入。
-			}
-			if($field->isReadOnly()){
-				$ignore_on_write[] = $name;
-			}
-		}
-		return new TableInfo(
-			connection: $table_obj->getConnection(),
-			table: $table_obj->getName(),
-			fields_type: $fields_type,
-			pk: $pk,
-			ignore_on_write: $ignore_on_write,
-			default_order_by: $table_obj->getOrderBy(),
-			auto_inc:$auto_inc,
-			fields: $fields,
-			immutable: $table_obj->isImmutable(),
-		);
+		return TableInfo::get(static::class);
 	}
 
 	/**
@@ -527,7 +445,7 @@ abstract class Record implements ArrayAccess
 	 */
 	static public function countAll(): int
 	{
-		$sql = 'SELECT count(1) FROM ' . static::table();
+		$sql = 'SELECT count(*) FROM ' . static::table();
 		return (int)static::selectSingleValue($sql);
 	}
 
@@ -625,7 +543,7 @@ abstract class Record implements ArrayAccess
 
 		//不指定类型会导致bool值出问题。（不指定则视为string，bool false 转换为 string 为 ""， 而mysql使用tinyint来模拟bool，""对于tinyint来说是个非法值）
 		$type = $info->getFieldsType();
-		array_walk($fields, fn(&$x) => $x = [$this[$x], $type[$x]]);
+		array_walk($fields, fn(&$x) => $x = [$this->{$x}, $type[$x]]);
 		$con = static::con('w');
 		$result = $con->execute($sql, $fields, named:false);
 		if($result){
@@ -684,11 +602,11 @@ abstract class Record implements ArrayAccess
 		$where = [];
 		$params = null;
 		foreach ($fields as $field) {
-			if ($this[$field] === null) {
+			if ($this->{$field} === null) {
 				$where[] = self::field($field) . ' IS NULL';
 			} else {
 				$where[] = self::field($field) . ' = ?';
-				$params[] = [$this[$field], $types[$field]];
+				$params[] = [$this->{$field}, $types[$field]];
 			}
 		}
 		$sql = 'DELETE FROM ' . static::table() . ' WHERE ' . implode(' AND ', $where);
@@ -735,7 +653,7 @@ abstract class Record implements ArrayAccess
 			if($this->snap){
 				//计算diff，去掉内容相同的字段，节约开销
 				foreach ($fields as $key => $field){
-					if($this->snap[$field] === $this[$field]){
+					if($this->snap[$field] === $this->{$field}){
 						unset($fields[$key]);
 					}
 				}
@@ -759,14 +677,14 @@ abstract class Record implements ArrayAccess
 		$params = [];
 		foreach ($fields as $field) {
 			$set[] = self::field($field) . ' = ?';
-			$params[] = [$this[$field], $type[$field]];
+			$params[] = [$this->{$field}, $type[$field]];
 		}
 		foreach ($by_fields as $field) {
-			if ($this[$field] === null) {
+			if ($this->{$field} === null) {
 				$where[] = self::field($field) . ' IS NULL';
 			} else {
 				$where[] = self::field($field) . ' = ?';
-				$params[] = [$this[$field], $type[$field]];
+				$params[] = [$this->{$field}, $type[$field]];
 			}
 		}
 		$sql = 'UPDATE ' . static::table() . ' SET ' . implode(', ', $set) . ' WHERE ' . implode(' AND ', $where);
@@ -776,22 +694,24 @@ abstract class Record implements ArrayAccess
 		return $result;
 	}
 
+	////这样数组式访问只能处理public属性。
+
 	public function offsetExists($offset): bool
 	{
-		return property_exists($this, $offset);
+		return Func::propertyExists($this, $offset);
 	}
 
 	public function offsetGet($offset): mixed
 	{
-		return $this->{$offset};
+		return Func::propertyGet($this, $offset);
 	}
 
 	public function offsetUnset($offset){
-		unset($this->{$offset});
+		Func::propertyUnset($this, $offset);
 	}
 
 	public function offsetSet($offset, $value){
-		$this->{$offset} = $value;
+		Func::propertySet($this, $offset, $value);
 	}
 
 	/**

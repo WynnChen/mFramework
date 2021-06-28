@@ -51,9 +51,9 @@ class Map extends ArrayObject
 	 *
 	 * @param array $data 输入的数据。
 	 */
-	public function __construct(array $data = array())
+	public function __construct(array|object|null $data = null)
 	{
-		parent::__construct($data, self::ARRAY_AS_PROPS);
+		parent::__construct($data ?? [], self::ARRAY_AS_PROPS);
 	}
 
 	/**

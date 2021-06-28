@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace mFramework\Database;
 
+use mFramework\Database\Attribute\Field;
+use mFramework\Database\Attribute\Table;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionNamedType;
+
 /**
  * Record 类连接数据库的表配置信息
  * value object，不可变。
@@ -24,6 +30,7 @@ class TableInfo
 	 * @param ?array $default_order_by
 	 * @param string|null $auto_inc
 	 * @param array $fields
+	 * @param bool $immutable
 	 */
 	public function __construct(
 		/**
@@ -79,6 +86,108 @@ class TableInfo
 	{
 		//缓存可写字段
 		$this->write_fields = array_diff($this->fields, $this->ignore_on_write);
+	}
+
+	/**
+	 * @var array $classname => $info
+	 */
+	static private array $tableInfo = [];
+
+	/**
+	 * @param string $class
+	 * @return TableInfo|null
+	 * @throws Exception
+	 * @throws ReflectionException
+	 */
+	public static function get(string $class): ?TableInfo
+	{
+		return self::$tableInfo[$class] ?? self::$tableInfo[$class] = self::setUp($class);
+	}
+
+	/**
+	 * Record类的子类必须通过 attributes 来配置数据库表相关信息。
+	 *
+	 * @param string $class
+	 * @return TableInfo|null
+	 * @throws Exception
+	 * @throws ReflectionException
+	 */
+	static private function setUp(string $class): ?TableInfo
+	{
+		if(!is_a($class, Record::class, true)){
+			throw new Exception($class.' 不是数据库表记录类。');
+		}
+		//class attributes 分析,表相关属性
+		$reflection = new ReflectionClass($class);
+		$attributes = $reflection->getAttributes(Table::class);
+		if(!$attributes){
+			//没有表信息，可能是继承的，找父类：
+			$reflection = $reflection->getParentClass();
+			if(!$reflection){//没有父类了
+				throw new Exception($class.' 缺乏数据库属性配置信息。');
+			}
+			return $reflection->getName()::getTableInfo(); //用父类的信息
+		}
+		/** @var Table $table_obj */
+		$table_obj = $attributes[0]->newInstance(); //携带着表的几个属性
+
+		// properties attributes 分析，字段属性
+		$fields = [];
+		$fields_type = [];
+		$pk = [];
+		$auto_inc = null;
+		$ignore_on_write = [];
+		$properties = $reflection->getProperties();
+		foreach($properties as $property) {
+			if ($property->isStatic()) {
+				continue; //静态属性不需要管
+			}
+			$attributes = $property->getAttributes(Field::class);
+			if (!$attributes) {
+				continue; //没有 "Field" attribute 的再见。
+			}
+			if(!$property->hasDefaultValue()){
+				throw new Exception('字段属性 "'.$class.'->'.$property->getName().'" 必须有默认值（可以是null）。');
+			}
+			/** @var Field $field */
+			$field = $attributes[0]->newInstance(); //携带flag信息
+			//字段名
+			$fields[] = $name = $property->getName(); //使用变量名
+			//字段类型定义
+			$type = $property->getType();
+			if ($type instanceof ReflectionNamedType) {
+				$type = match (strtolower($type->getName())) {
+					'int' => Record::DATATYPE_INT,
+					'float' => Record::DATATYPE_FLOAT,
+					'bool' => Record::DATATYPE_BOOL,
+					default => Record::DATATYPE_STRING, //其他统统按string处理。
+				};
+			} else { //没有类型信息或 union type也都按照string处理。
+				$type = Record::DATATYPE_STRING;
+			}
+			$fields_type[$name] = $type; //写入字段定义数组。
+			if($field->isPk()){
+				$pk[] = $name;
+			}
+			if($field->isAutoInc()){
+				$auto_inc = $name;
+				$ignore_on_write[] = $name; //auto inc 的也就不能写入。
+			}
+			if($field->isReadOnly()){
+				$ignore_on_write[] = $name;
+			}
+		}
+		return new TableInfo(
+			connection: $table_obj->getConnection(),
+			table: $table_obj->getName(),
+			fields_type: $fields_type,
+			pk: $pk,
+			ignore_on_write: $ignore_on_write,
+			default_order_by: $table_obj->getOrderBy(),
+			auto_inc:$auto_inc,
+			fields: $fields,
+			immutable: $table_obj->isImmutable(),
+		);
 	}
 
 	public function getConnection(): array|string

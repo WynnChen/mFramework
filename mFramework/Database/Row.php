@@ -19,6 +19,6 @@ class Row extends Map
 	 */
 	public function __construct(bool $fetch = false)
 	{
-		parent::__construct();
+		parent::__construct($this);
 	}
 }
