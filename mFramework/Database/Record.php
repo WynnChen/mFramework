@@ -36,7 +36,7 @@ use ReflectionNamedType;
  *    ...
  * }
  *
- * 支持 array access，但仅限于public属性（即使在可以访问private/protected的类内部）
+ * 支持 array access，但仅限于public属性（即使在可以访问private/protected的类内部）。
  *
  *
  * @see Table
@@ -733,7 +733,7 @@ abstract class Record implements ArrayAccess
 		$fields = array_flip($fields);
 		foreach($values as $key => $value){
 			if(isset($fields[$key])){
-				$this->offsetSet($key, $value);
+				$this->{$key} = $value;
 			}
 		}
 		return $this;
