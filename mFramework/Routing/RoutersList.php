@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace mFramework\Routing;
 
-use mFramework\Http\ClientRequest;
+
 use mFramework\Http\Request;
 use SplDoublyLinkedList;
 
@@ -31,7 +31,7 @@ class RoutersList extends SplDoublyLinkedList implements RouterInterface
 			try {
 				return $route->route($request);
 			}
-			catch (RouteException $e){
+			catch (RouteException){
 				//继续下一个
 			}
 		}

@@ -29,7 +29,7 @@ class DispatchersList extends SplDoublyLinkedList implements DispatcherInterface
 			try{
 			return $dispatcher->handle($request);
 			}
-			catch (DispatchException $e){
+			catch (DispatchException){
 				//继续下一个
 			}
 		}
