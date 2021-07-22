@@ -62,7 +62,7 @@ class SelectGroup extends Select
 				$result = true;
 			}
 			else{
-				$option->del('selected');
+				$option->delete('selected');
 			}
 		}
 		if($result){
