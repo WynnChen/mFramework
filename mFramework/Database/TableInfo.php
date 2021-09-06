@@ -166,16 +166,23 @@ class TableInfo
 			}
 			//是索引？
 			if($field->isUnique()){
-				$table_info->static_macros['selectBy'.self::snakeToCamel($name)] = (function($value)use($name){
+				$table_info->static_macros['selectBy'.self::snakeToPascal($name)] = (function($value)use($name){
 					return static::selectBy([$name => $value])->firstRow();
 				})->bindTo(null, $class);
 			}elseif($field->isIndex()){
-				$table_info->static_macros['selectBy'.self::snakeToCamel($name)] = (function($value)use($name){
+				$table_info->static_macros['selectBy'.self::snakeToPascal($name)] = (function($value)use($name){
 					return static::selectBy([$name => $value]);
 				})->bindTo(null, $class);
 			}
+			//是个外键？
+			if($key = $field->getKey()){
+				$table_info->macros['get'.self::snakeToPascal(preg_replace('/_id$/','', $name))] = function()use($key, $name){
+					return (function($value){
+						return static::selectByPk($value);
+					})->bindTo(null, $key)($this->$name);
+				};
+			}
 		}
-
 		//缓存可写字段
 		$table_info->write_fields = array_diff($table_info->fields, $table_info->ignore_on_write);
 		return $table_info;
@@ -253,7 +260,7 @@ class TableInfo
 		return $this->immutable;
 	}
 
-	static private function snakeToCamel($name)
+	static private function snakeToPascal($name)
 	{
 		return str_replace(' ', '', ucwords(str_replace('_', ' ', $name)));
 	}

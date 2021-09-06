@@ -68,4 +68,9 @@ class Field {
 		return (bool)($this->flags & Field::IS_UNIQUE);
 	}
 
+	public function getKey():?string
+	{
+		return $this->key;
+	}
+
 }

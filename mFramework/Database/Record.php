@@ -400,6 +400,7 @@ abstract class Record implements ArrayAccess
 
 	/**
 	 * 直接传递一组约束来进行简单 select
+	 * @todo 收紧为 protected
 	 *
 	 * @param array $constraint
 	 * @param int|array|Paginator|null $paginator
@@ -777,10 +778,18 @@ abstract class Record implements ArrayAccess
 
 	static public function __callStatic(string $name, array $arguments)
 	{
-		self::getTableInfo()->getStaticMacros();
 		if (($func = (self::getTableInfo()->getStaticMacros()[$name]??null)) === null) {
 			trigger_error('Call to undefined method ' . self::class . "::{$name}", E_USER_ERROR);
 		}
-		return forward_static_call_array($func, $arguments);
+		return call_user_func_array($func, $arguments);
+	}
+
+	public function __call(string $name, array $arguments)
+	{
+		if (($func = (self::getTableInfo()->getMacros()[$name]??null)) === null) {
+			trigger_error('Call to undefined method ' . self::class . "->{$name}", E_USER_ERROR);
+		}
+		return call_user_func_array($func->bindTo($this), $arguments);
+
 	}
 }
