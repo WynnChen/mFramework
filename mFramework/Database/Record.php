@@ -774,4 +774,13 @@ abstract class Record implements ArrayAccess
 		return $this->snap;
 	}
 
+
+	static public function __callStatic(string $name, array $arguments)
+	{
+		self::getTableInfo()->getStaticMacros();
+		if (($func = (self::getTableInfo()->getStaticMacros()[$name]??null)) === null) {
+			trigger_error('Call to undefined method ' . self::class . "::{$name}", E_USER_ERROR);
+		}
+		return forward_static_call_array($func, $arguments);
+	}
 }

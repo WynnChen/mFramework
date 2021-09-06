@@ -19,74 +19,65 @@ class TableInfo
 	 * @var array 缓存信息，需要写的字段表，即 diff($fields, $ignore_on_write)
 	 */
 	private array $write_fields;
+	/**
+	 * @var array 相应类的动态的静态类方法
+	 */
+	private array $static_macros = [];
+	/**
+	 * @var array 相应类的动态的对象方法
+	 */
+	private array $macros = [];
 
 	/**
-	 * TableInfo constructor.
-	 * @param string|array $connection
-	 * @param string $table
-	 * @param array $fields_type
-	 * @param array $pk
-	 * @param array $ignore_on_write
-	 * @param ?array $default_order_by
-	 * @param string|null $auto_inc
-	 * @param array $fields
-	 * @param bool $immutable
+	 * 数组格式用于读写分离：
+	 * array(
+	 *     'r' => 读用的连接名称（string）
+	 *     'w' => 写用的连接名称
+	 *     ''  => 指定未指定模式时使用的连接，如果没有这条，那么未指定模式时按照'w'模式处理。
+	 * )
+	 *
+	 * 字符串格式是简写，即 r 和 w 都使用这一个连接名称。
+	 *
+	 * 读连接用于retrieve，count等，
+	 * 写连接用于insert,update,delete等。
+	 *
+	 * 这个配置是给 con() 方法使用的，如果自行另外实现了 con()，那么这个配置可能无效。
+	 *
 	 */
-	public function __construct(
-		/**
-		 * 数组格式用于读写分离：
-		 * array(
-		 *     'r' => 读用的连接名称（string）
-		 *     'w' => 写用的连接名称
-		 *     ''  => 指定未指定模式时使用的连接，如果没有这条，那么未指定模式时按照'w'模式处理。
-		 * )
-		 *
-		 * 字符串格式是简写，即 r 和 w 都使用这一个连接名称。
-		 *
-		 * 读连接用于retrieve，count等，
-		 * 写连接用于insert,update,delete等。
-		 *
-		 * 这个配置是给 con() 方法使用的，如果自行另外实现了 con()，那么这个配置可能无效。
-		 *
-		 */
-		private string|array $connection = '',
-		/**
-		 * @var string 对应的数据库表名
-		 */
-		private string $table = '',
-		/**
-		 * @var array array(字段名 => 类型, ...)
-		 */
-		private array $fields_type = [],
-		/**
-		 * @var array 主键所有字段，一个字段也要是数组形式。
-		 */
-		private array $pk = [],
-		/**
-		 * @var array update/insert 时需要忽略的字段名列表，一般为自动生成的字段，比如 auto inc 的，timestamp类型的。
-		 */
-		private array $ignore_on_write = [],
-		/**
-		 * @var array 默认的 order by 信息，数组， array(字段名 => 'ASC'|'DESC') 这样的形式，顺序按定义顺序。
-		 */
-		private ?array $default_order_by = null,
-		/**
-		 * @var string|null auto inc 字段，如果有。
-		 */
-		private ?string $auto_inc = null,
-		/**
-		 * @var array 字段列表
-		 */
-		private array $fields = [],
-		/**
-		 * @var bool 是否immutable，true的表默认不允许 update()方法。
-		 */
-		private bool $immutable = false,
-	)
-	{
-		//缓存可写字段
-		$this->write_fields = array_diff($this->fields, $this->ignore_on_write);
-	}
+	private string|array $connection = '';
+	/**
+	 * @var string 对应的数据库表名
+	 */
+	private string $table = '';
+	/**
+	 * @var array array(字段名 => 类型, ...)
+	 */
+	private array $fields_type = [];
+	/**
+	 * @var array 主键所有字段，一个字段也要是数组形式。
+	 */
+	private array $pk = [];
+	/**
+	 * @var array update/insert 时需要忽略的字段名列表，一般为自动生成的字段，比如 auto inc 的，timestamp类型的。
+	 */
+	private array $ignore_on_write = [];
+	/**
+	 * @var array 默认的 order by 信息，数组， array(字段名 => 'ASC'|'DESC') 这样的形式，顺序按定义顺序。
+	 */
+	private ?array $default_order_by = null;
+	/**
+	 * @var string|null auto inc 字段，如果有。
+	 */
+	private ?string $auto_inc = null;
+	/**
+	 * @var array 字段列表
+	 */
+	private array $fields = [];
+	/**
+	 * @var bool 是否immutable，true的表默认不允许 update()方法。
+	 */
+	private bool $immutable = false;
+
 
 	/**
 	 * @var array $classname => $info
@@ -130,15 +121,12 @@ class TableInfo
 		}
 		/** @var Table $table_obj */
 		$table_obj = $attributes[0]->newInstance(); //携带着表的几个属性
-
-		// properties attributes 分析，字段属性
-		$fields = [];
-		$fields_type = [];
-		$pk = [];
-		$auto_inc = null;
-		$ignore_on_write = [];
-		$properties = $reflection->getProperties();
-		foreach($properties as $property) {
+		$table_info = new self();
+		$table_info->connection =  $table_obj->getConnection();
+		$table_info->table =  $table_obj->getName();
+		$table_info->default_order_by = $table_obj->getOrderBy();
+		$table_info->immutable =  $table_obj->isImmutable();
+		foreach($reflection->getProperties() as $property) {
 			if ($property->isStatic()) {
 				continue; //静态属性不需要管
 			}
@@ -152,7 +140,7 @@ class TableInfo
 			/** @var Field $field */
 			$field = $attributes[0]->newInstance(); //携带flag信息
 			//字段名
-			$fields[] = $name = $property->getName(); //使用变量名
+			$table_info->fields[] = $name = $property->getName(); //使用变量名
 			//字段类型定义
 			$type = $property->getType();
 			if ($type instanceof ReflectionNamedType) {
@@ -165,29 +153,32 @@ class TableInfo
 			} else { //没有类型信息或 union type也都按照string处理。
 				$type = Record::DATATYPE_STRING;
 			}
-			$fields_type[$name] = $type; //写入字段定义数组。
+			$table_info->fields_type[$name] = $type; //写入字段定义数组。
 			if($field->isPk()){
-				$pk[] = $name;
+				$table_info->pk[] = $name;
 			}
 			if($field->isAutoInc()){
-				$auto_inc = $name;
-				$ignore_on_write[] = $name; //auto inc 的也就不能写入。
+				$table_info->auto_inc = $name;
+				$table_info->ignore_on_write[] = $name; //auto inc 的也就不能写入。
 			}
 			if($field->isReadOnly()){
-				$ignore_on_write[] = $name;
+				$table_info->ignore_on_write[] = $name;
+			}
+			//是索引？
+			if($field->isUnique()){
+				$table_info->static_macros['selectBy'.self::snakeToCamel($name)] = (function($value)use($name){
+					return static::selectBy([$name => $value])->firstRow();
+				})->bindTo(null, $class);
+			}elseif($field->isIndex()){
+				$table_info->static_macros['selectBy'.self::snakeToCamel($name)] = (function($value)use($name){
+					return static::selectBy([$name => $value]);
+				})->bindTo(null, $class);
 			}
 		}
-		return new TableInfo(
-			connection: $table_obj->getConnection(),
-			table: $table_obj->getName(),
-			fields_type: $fields_type,
-			pk: $pk,
-			ignore_on_write: $ignore_on_write,
-			default_order_by: $table_obj->getOrderBy(),
-			auto_inc:$auto_inc,
-			fields: $fields,
-			immutable: $table_obj->isImmutable(),
-		);
+
+		//缓存可写字段
+		$table_info->write_fields = array_diff($table_info->fields, $table_info->ignore_on_write);
+		return $table_info;
 	}
 
 	public function getConnection(): array|string
@@ -244,12 +235,27 @@ class TableInfo
 		return $this->write_fields;
 	}
 
+	public function getStaticMacros(): array
+	{
+		return $this->static_macros;
+	}
+
+	public function getMacros(): array
+	{
+		return $this->macros;
+	}
+
 	/**
 	 * @return bool
 	 */
 	public function isImmutable(): bool
 	{
 		return $this->immutable;
+	}
+
+	static private function snakeToCamel($name)
+	{
+		return str_replace(' ', '', ucwords(str_replace('_', ' ', $name)));
 	}
 
 }
