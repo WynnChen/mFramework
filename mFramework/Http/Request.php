@@ -876,7 +876,8 @@ final class Request extends Message
 	{
 		if(isset($this->queryParams[$name])){
 			if(is_string($this->queryParams[$name])){
-				return trim($this->queryParams[$name]) ?: $default;
+				$value = trim($this->queryParams[$name]);
+				return $value === '' ? $default : $value;
 			}
 			else{
 				return $this->queryParams[$name];
@@ -916,7 +917,8 @@ final class Request extends Message
 		if($this->method === 'POST'){
 			if(isset($this->parsedBody[$name])){
 				if(is_string($this->parsedBody[$name])){
-					return trim($this->parsedBody[$name]) ?: $default;
+					$value = trim($this->parsedBody[$name]);
+					return $value === '' ? $default : $value;
 				}
 				else{
 					return $this->parsedBody[$name];
