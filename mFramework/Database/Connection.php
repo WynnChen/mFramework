@@ -249,9 +249,9 @@ abstract class Connection extends PDO
 	 * @param string $sql
 	 * @param array|null $params
 	 * @param bool|null $named
-	 * @return string|false|null
+	 * @return mixed 各种可能的存储值或者null
 	 */
-	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): string|false|null
+	public function selectSingleValue(string $sql, ?array $params = null, ?bool $named = null): mixed
 	{
 		try {
 			$stmt = $this->stmtExecute($sql, $params, $named);
